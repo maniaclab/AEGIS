@@ -76,17 +76,17 @@ spec:
               value: mcp
           envFrom:
             - secretRef:
-                name: mcp-keys        # API_KEY_1, API_KEY_2 — read-only service keys
+                name: mcp-keys # API_KEY_1, API_KEY_2 — read-only service keys
             - secretRef:
-                name: owl-db          # DATABASE_URL
+                name: owl-db # DATABASE_URL
             - secretRef:
-                name: owl-s3          # S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
+                name: owl-s3 # S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
             - secretRef:
-                name: openai-key      # OPENAI_API_KEY
+                name: openai-key # OPENAI_API_KEY
             - configMapRef:
                 name: keycloak-config # KEYCLOAK_URL, KEYCLOAK_REALM, KEYCLOAK_AUDIENCE
             - configMapRef:
-                name: owl-config      # models, trusted writers, log level
+                name: owl-config # models, trusted writers, log level
           readinessProbe:
             httpGet:
               path: /healthz
@@ -143,7 +143,7 @@ spec:
             - secretRef:
                 name: openai-key
             - secretRef:
-                name: owl-mattermost  # MATTERMOST_WEBHOOK_URL — used from Phase 3
+                name: owl-mattermost # MATTERMOST_WEBHOOK_URL — used from Phase 3
             - configMapRef:
                 name: owl-config
           resources:

@@ -49,6 +49,7 @@ roleRef:
   name: afchatkit-role
   apiGroup: rbac.authorization.k8s.io
 
+
 # ──────────────────────────────────────────────────────────────
 # MCP – Elasticsearch
 # ──────────────────────────────────────────────────────────────
@@ -88,6 +89,7 @@ roleRef:
   kind: Role
   name: mcp-server-elasticsearch-role
   apiGroup: rbac.authorization.k8s.io
+
 
 # ──────────────────────────────────────────────────────────────
 # MCP – Executor
@@ -129,6 +131,7 @@ roleRef:
   name: mcp-server-executor-role
   apiGroup: rbac.authorization.k8s.io
 
+
 # ──────────────────────────────────────────────────────────────
 # MCP – Knowledge
 # ──────────────────────────────────────────────────────────────
@@ -169,6 +172,7 @@ roleRef:
   name: mcp-server-knowledge-role
   apiGroup: rbac.authorization.k8s.io
 
+
 # ──────────────────────────────────────────────────────────────
 # MCP – CRIC
 # ──────────────────────────────────────────────────────────────
@@ -204,6 +208,7 @@ roleRef:
   kind: Role
   name: mcp-server-cric-role
   apiGroup: rbac.authorization.k8s.io
+
 
 # ──────────────────────────────────────────────────────────────
 # MCP – Rucio
@@ -245,6 +250,7 @@ roleRef:
   name: mcp-server-rucio-role
   apiGroup: rbac.authorization.k8s.io
 
+
 # ──────────────────────────────────────────────────────────────
 # MCP – GGUS
 # ──────────────────────────────────────────────────────────────
@@ -280,6 +286,7 @@ roleRef:
   kind: Role
   name: mcp-server-ggus-role
   apiGroup: rbac.authorization.k8s.io
+
 
 # ──────────────────────────────────────────────────────────────
 # OWL – Postgres (system of record)
@@ -321,6 +328,7 @@ roleRef:
   name: owl-postgres-role
   apiGroup: rbac.authorization.k8s.io
 
+
 # ──────────────────────────────────────────────────────────────
 # MCP – OWL (librarian front end)
 # ──────────────────────────────────────────────────────────────
@@ -360,6 +368,7 @@ roleRef:
   kind: Role
   name: mcp-server-owl-role
   apiGroup: rbac.authorization.k8s.io
+
 
 # ──────────────────────────────────────────────────────────────
 # OWL – worker (ingest, sweeps, notifications)
