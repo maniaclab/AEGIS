@@ -1,0 +1,57 @@
+{
+  "name": "cric-mcp",
+  "description": "CRIC MCP Server",
+  "version": "0.0.1",
+  "license": "MIT",
+  "author": "Ilija Vukotic",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "bin": {
+    "cric-mcp": "./dist/index.js"
+  },
+  "repository": "https://github.com/maniaclab/ai_factory",
+  "keywords": [
+    "mcp",
+    "mcp-server"
+  ],
+  "files": [
+    "package.json",
+    "dist",
+    "NOTICE.txt",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/index.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "test": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/inspector": "^0.21.2",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^4.0.1",
+    "zod": "^3.24.4"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "25.6.2",
+    "shx": "0.4.0",
+    "typescript": "6.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,406 @@
+# RBAC for AFchatkit and all MCP servers.
+#
+# Each workload gets its own ServiceAccount (with token auto-mount disabled —
+# none of these services call the Kubernetes API directly) and a least-privilege
+# Role that grants `get` only on the Secrets / ConfigMaps that workload
+# actually consumes.
+#
+# Pattern
+#   ServiceAccount  →  <workload-name>
+#   Role            →  <workload-name>-role
+#   RoleBinding     →  <workload-name>-rolebinding
+
+# ──────────────────────────────────────────────────────────────
+# AFchatkit
+# ──────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: afchatkit
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: afchatkit-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["openai-key", "chatkit-workflow-id", "mcp"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: afchatkit-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: afchatkit
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: afchatkit-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – Elasticsearch
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-elasticsearch
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-elasticsearch-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["es-secret", "mcp-keys"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-elasticsearch-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-elasticsearch
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-elasticsearch-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – Executor
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-executor
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-executor-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["af-ssh-key", "mcp-keys"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-executor-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-executor
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-executor-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – Knowledge
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-knowledge
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-knowledge-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["mcp-keys"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-knowledge-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-knowledge
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-knowledge-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – CRIC
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-cric
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-cric-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["mcp-keys", "x509-proxy"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-cric-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-cric
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-cric-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – Rucio
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-rucio
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-rucio-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["mcp-keys", "rucio-mcp-token", "x509-proxy"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["rucio-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-rucio-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-rucio
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-rucio-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – GGUS
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-ggus
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-ggus-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["mcp-keys", "ggus-token"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-ggus-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-ggus
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-ggus-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# OWL – Postgres (system of record)
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: owl-postgres
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: owl-postgres-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["owl-db"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["owl-postgres-init"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: owl-postgres-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: owl-postgres
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: owl-postgres-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# MCP – OWL (librarian front end)
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-server-owl
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-owl-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["mcp-keys", "owl-db", "owl-s3", "openai-key"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config", "owl-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-server-owl-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server-owl
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: mcp-server-owl-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ──────────────────────────────────────────────────────────────
+# OWL – worker (ingest, sweeps, notifications)
+#
+# No mcp-keys: the worker serves no requests. It does get owl-mattermost, which the
+# front end must not have — nothing that answers HTTP should be able to post to the
+# collaboration's channel.
+# ──────────────────────────────────────────────────────────────
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: owl-worker
+  namespace: aegis
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: owl-worker-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["owl-db", "owl-s3", "openai-key", "owl-mattermost"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["owl-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: owl-worker-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: owl-worker
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: owl-worker-role
+  apiGroup: rbac.authorization.k8s.io

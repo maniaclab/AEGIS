@@ -1,0 +1,86 @@
+# docker-compose.yml — vLLM on two NVIDIA DGX Spark (GB10 / sm_121) boxes
+#
+# ONE file, TWO profiles. Each Spark runs exactly ONE service:
+#
+#   Spark 1 (nemotron-3-nano-30b):  docker compose --profile spark1 up -d
+#   Spark 2 (qwen3.6):                docker compose --profile spark2 up -d
+#
+# Services carry a `profiles:` key, so a bare `docker compose up` starts nothing —
+# you must name the profile. That's deliberate: it stops both models from ever
+# grabbing the GPU + port 8000 on the same host.
+
+x-vllm-common: &vllm-common
+  image: ${VLLM_IMAGE}
+  restart: unless-stopped
+  ipc: host # matches the --ipc=host from the reference recipe
+  ports:
+    - "8000:8000"
+  environment:
+    HF_TOKEN: ${HF_TOKEN:?set HF_TOKEN in .env}
+    HF_HUB_ENABLE_HF_TRANSFER: "1"
+  volumes:
+    # "download once, mount everywhere" — host-side HF cache survives restarts
+    - ${HF_CACHE:-${HOME}/.cache/huggingface}:/root/.cache/huggingface
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+  healthcheck:
+    # urlopen() raises on any non-200, so this exits non-zero until vLLM is live
+    test:
+      [
+        "CMD",
+        "python3",
+        "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+      ]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30m # first cold start compiles kernels (~15-30 min) — don't flap
+
+services:
+  # ---- Spark 1 -----------------------------------------------------------
+  vllm-main:
+    <<: *vllm-common
+    profiles: ["spark1"]
+    container_name: vllm-main
+    command: >
+      vllm serve nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4
+      --served-model-name nano-30b
+      --max-model-len 131072
+      --gpu-memory-utilization 0.85
+      --max-num-seqs 4
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+
+  # ---- Spark 2 -----------------------------------------------------------
+  vllm-fp8:
+    <<: *vllm-common
+    profiles: ["spark2"]
+    container_name: vllm-fp8
+    command: >
+      vllm serve Qwen/Qwen3.6-35B-A3B-FP8
+      --served-model-name qwen3.6-35b
+      --max-model-len 131072
+      --gpu-memory-utilization 0.85
+      --max-num-seqs 4
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser qwen3
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: open-webui
+    profiles: ["spark2"]
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      OLLAMA_API_BASE_URL: "http://ollama:11434"
+    volumes:
+      - ./webui/data:/app/backend/data

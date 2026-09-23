@@ -1,0 +1,168 @@
+# OWL — the ATLAS AI Librarian.
+#
+# Two Deployments from one image, selected by OWL_MODE:
+#   mcp-server-owl  — stateless MCP/HTTP front end, 2 replicas
+#   owl-worker      — single replica: owns migrations, the ingest queue and the
+#                     scheduled sweeps. Two of these would duplicate every sweep.
+#
+# Both carry `role: mcp-server`, so deploy/mcps/network_policy.yaml already restricts
+# inbound traffic to the ingress controller and the namespace itself.
+kind: Service
+apiVersion: v1
+metadata:
+  name: mcp-server-owl
+  namespace: aegis
+spec:
+  selector:
+    app: mcp-server-owl
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: owl-mcp
+  namespace: aegis
+  labels:
+    k8s-app: owl-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - owl.af.atlas-ml.org
+      secretName: letsencrypt-generated-owl-mcp
+  rules:
+    - host: owl.af.atlas-ml.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-server-owl
+                port:
+                  number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server-owl
+  namespace: aegis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mcp-server-owl
+  template:
+    metadata:
+      labels:
+        app: mcp-server-owl
+        role: mcp-server
+    spec:
+      serviceAccountName: mcp-server-owl
+      automountServiceAccountToken: false
+      containers:
+        - name: mcp-server-owl
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-owl
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OWL_MODE
+              value: mcp
+          envFrom:
+            - secretRef:
+                name: mcp-keys        # API_KEY_1, API_KEY_2 — read-only service keys
+            - secretRef:
+                name: owl-db          # DATABASE_URL
+            - secretRef:
+                name: owl-s3          # S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
+            - secretRef:
+                name: openai-key      # OPENAI_API_KEY
+            - configMapRef:
+                name: keycloak-config # KEYCLOAK_URL, KEYCLOAK_REALM, KEYCLOAK_AUDIENCE
+            - configMapRef:
+                name: owl-config      # models, trusted writers, log level
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: owl-worker
+  namespace: aegis
+spec:
+  replicas: 1
+  strategy:
+    # Never two workers at once: the old pod must exit before the new one starts, so
+    # migrations and sweeps have a single owner.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: owl-worker
+  template:
+    metadata:
+      labels:
+        app: owl-worker
+        role: mcp-server
+    spec:
+      serviceAccountName: owl-worker
+      automountServiceAccountToken: false
+      containers:
+        - name: owl-worker
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-owl
+          env:
+            - name: OWL_MODE
+              value: worker
+          envFrom:
+            - secretRef:
+                name: owl-db
+            - secretRef:
+                name: owl-s3
+            - secretRef:
+                name: openai-key
+            - secretRef:
+                name: owl-mattermost  # MATTERMOST_WEBHOOK_URL — used from Phase 3
+            - configMapRef:
+                name: owl-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              # Extraction batches are the memory-hungry part; raise if the worker OOMs
+              # on large PDFs rather than lowering the batch size first.
+              memory: "2Gi"
+              cpu: "2"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mcp-server-owl
+  namespace: aegis
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mcp-server-owl

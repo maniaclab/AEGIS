@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: aegis
+data:
+  KEYCLOAK_URL: "https://keycloak-prod.tempest.uchicago.edu"
+  KEYCLOAK_REALM: "AF-platform"
+  KEYCLOAK_AUDIENCE: "executor-mcp"

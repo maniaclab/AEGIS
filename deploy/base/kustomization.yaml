@@ -1,0 +1,32 @@
+namespace: aegis
+
+resources:
+  # namespace
+  - ns.yaml
+
+  # sealed secrets
+  - mcp-keys-sealed.yaml
+  - mcp-secret-sealed.yaml
+  - es-secret-sealed.yaml
+  - openai-key-sealed.yaml
+  - grid-certs-secret_sealed.yaml
+  - rucio-mcp-token-sealed.yaml
+  - ggus-token-sealed.yaml
+  # OWL — seal the templates in secrets/ and uncomment (see mcps/OWL/TODO.md, Phase 0)
+  # - owl-db-sealed.yaml
+  # - owl-s3-sealed.yaml
+  # - owl-mattermost-sealed.yaml
+
+  # x509 proxy renewal
+  - x509.yaml
+
+  # rbac
+  - rbac.yaml
+
+  # configmaps
+  - keycloak.yaml
+  - rucio-config.yaml
+  - owl-config.yaml
+
+  # owl system of record (postgres + pgvector)
+  - owl-postgres.yaml

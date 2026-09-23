@@ -1,0 +1,18 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: rucio-mcp-token
+  namespace: aegis
+spec:
+  encryptedData:
+    RUCIO_MCP_TOKEN: AgBjx1IOru90p1Tf/b1eaf9epEaCcLE3/04E1wW7AhYeTUlF9pGHNw03/C/GIjHq9RgsiO/fUFQ85T8X5isWrsiKa1GmZPaaxYMPW0TrjPjdL1CmVw0Uh5MjM+AMoCSJZ+wjEHhrTUqL8sv0qEZm2Cicr8Mefxxkb3Ot71K1YvUKQN/BmZ9IupAHCAEy6o3yjYo0bGnUhqOGLJdSNNiZcW/+upiWiXe1+7SW7xUV0uoUwk0/RKVkmKay0IXFHLF5ZE4FaYJc+KAGBz9rVb38Z2DS3hvmN4hNPNTgyzCbt3VQ+wdsJhDqsp46Yh+zljbPL4UKvNehQz3KYViwZBcXSVXPhT/CDQbYTlOHBwuYLZh4KK4hnYZY3V8j4V5BlDCPtYB4n63nDTshXwwjvqxEUlMzPlcI83NsAR8C/uUXkZZFQxn6nSF/KSD5JmwLok5+S3qeEvKL88lYVbsQvFeyAiyA667M1A25BM3/n7OhWE65YcuTifxzq2rY9A2g4/4HHE89fEDZvSGKfcP4iOKG3j64MM4d9xVY6qCdzQOkfrjRnnCyTNdufbIO39ovPIsmfiVjLLSe1ihTTU8idtyfjFYaerqtTi8fiB4luGY8wrbjC2h/oXYbjplHJ1uhgndN0ZWTblYv3KutmFvPW3vCjs3cB3bh606pnBCVPBKMZbTbLjG4GruAT9SPo0pOvKem7a22vVh3
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        k8slens-edit-resource-version: v1
+      name: rucio-mcp-token
+      namespace: aegis
+    type: Opaque

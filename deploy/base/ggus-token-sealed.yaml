@@ -1,0 +1,16 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: ggus-token
+  namespace: af-platform
+spec:
+  encryptedData:
+    GGUS_TOKEN: AgAh3eTQujrPMAKzr1vB1L/XGi49+EHuB4Cnl6YUuSmBfyGJJzlVy7OmcZOz2DNfMTDepJCW4tNjBCQ9Sbq76/IvVegO8yMMQkb6qVJu84YkYJHgD8RX1qd9r/Zx6yle+5Tbx40UPC93as+Ych3GGUuttzFRLfsAZa+Q6W12DC4ooWykzhqmaZJdPNl6PbktX/vIqKC21pMYl2yI+2vSla0nQNe+ltnw01guI27WUCdxLUpRD7SWwmBz4MtrMRvDm9ltUfusk8D0Q47/iEHuSArrHgA/J9vM8l8gU7+ywYzoNeH0uYN4OaKhduuP/i1qLezuzCYsYVvrMECJgA7U1+Adl1JBQCet9+qAjVAoXMK/kUFwk6JHOSHh+WM6zkORO3Vyj9K/FEkp5i7iNr2vfmw9B6PzibyZojvmbDBvMElqvWqfQKxL+jxD5ZrGjcBtIOpJD/+agJnYZ4Ce16dKItFiKZEaMvPud1zoKGqxdlGbZEahNPa10fuHhmFj7KvA586BgyvP6JUfXk76QhQ7yFj9HOX/Z+6SdsvCxGZFAcpwwrbqT9O1h0+wLY+IQMbSusRyqj7OBJjzRV4PJjuvZJFkkTr78tkx/rMiI2joObMxZlUtR+XPwggvHaJCjqrVdJdJq6SUckNbRHUcS0BtKpw4l8KCjVFDle36M4brzotCLCh229Ws+xqB9kJLGp0Np6b28IYadgUHOtBlZwAGh9lv2btdnxdTT+Q6yWgx916z058MuLGxaUG8FRzJBZgGWQCXy2PppproUZJNibnlm0vq
+  template:
+    metadata:
+      creationTimestamp: null
+      name: ggus-token
+      namespace: af-platform
+    type: Opaque

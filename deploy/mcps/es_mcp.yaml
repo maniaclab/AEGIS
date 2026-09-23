@@ -1,0 +1,90 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mcp-server-elasticsearch
+  namespace: aegis
+spec:
+  selector:
+    app: mcp-server-elasticsearch
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: es-mcp
+  namespace: aegis
+  labels:
+    k8s-app: es-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - es.af.atlas-ml.org
+      secretName: letsencrypt-generated-es-mcp
+  rules:
+    - host: es.af.atlas-ml.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-server-elasticsearch
+                port:
+                  number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server-elasticsearch
+  namespace: aegis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mcp-server-elasticsearch
+  template:
+    metadata:
+      labels:
+        app: mcp-server-elasticsearch
+        role: mcp-server
+    spec:
+      serviceAccountName: mcp-server-elasticsearch
+      automountServiceAccountToken: false
+      containers:
+        - name: mcp-server-elasticsearch
+          # image: hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: es-secret
+            - secretRef:
+                name: mcp-keys
+            - configMapRef:
+                name: keycloak-config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mcp-server-elasticsearch
+  namespace: aegis
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mcp-server-elasticsearch

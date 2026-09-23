@@ -1,0 +1,89 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mcp-server-ggus
+  namespace: aegis
+spec:
+  selector:
+    app: mcp-server-ggus
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ggus-mcp
+  namespace: aegis
+  labels:
+    k8s-app: ggus-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ggus.af.atlas-ml.org
+      secretName: letsencrypt-generated-ggus-mcp
+  rules:
+    - host: ggus.af.atlas-ml.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-server-ggus
+                port:
+                  number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server-ggus
+  namespace: aegis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server-ggus
+  template:
+    metadata:
+      labels:
+        app: mcp-server-ggus
+        role: mcp-server
+    spec:
+      serviceAccountName: mcp-server-ggus
+      automountServiceAccountToken: false
+      containers:
+        - name: mcp-server-ggus
+          # image: hub.opensciencegrid.org/maniaclab/mcp-server-ggus
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus
+          # image: ivukotic/mcp-server-ggus
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: mcp-keys
+            - secretRef:
+                name: ggus-token
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: mcp-server-ggus
+#   namespace: af-platform
+# spec:
+#   minAvailable: 1
+#   selector:
+#     matchLabels:
+#       app: mcp-server-ggus

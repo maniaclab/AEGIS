@@ -1,3 +1,12 @@
+sparks/webui/data/cache
+.env
+.env.local
+.claude
+
+node_modules/
+.vscode
+secrets
+
 # Logs
 logs
 *.log

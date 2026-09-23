@@ -1,0 +1,97 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mcp-server-cric
+  namespace: aegis
+spec:
+  selector:
+    app: mcp-server-cric
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cric-mcp
+  namespace: aegis
+  labels:
+    k8s-app: cric-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - cric.af.atlas-ml.org
+      secretName: letsencrypt-generated-cric-mcp
+  rules:
+    - host: cric.af.atlas-ml.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-server-cric
+                port:
+                  number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server-cric
+  namespace: aegis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server-cric
+  template:
+    metadata:
+      labels:
+        app: mcp-server-cric
+        role: mcp-server
+    spec:
+      serviceAccountName: mcp-server-cric
+      automountServiceAccountToken: false
+      volumes:
+        - name: x509-secret
+          secret:
+            secretName: x509-proxy
+            defaultMode: 292
+      containers:
+        - name: mcp-server-cric
+          # image: hub.opensciencegrid.org/maniaclab/mcp-server-cric
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-cric
+          # image: ivukotic/mcp-server-cric
+          # command: ["sh", "-c", "echo Hello cric! && sleep 3600"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: mcp-keys
+          volumeMounts:
+            - name: x509-secret
+              readOnly: true
+              mountPath: /etc/grid-security-ro
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: mcp-server-cric
+#   namespace: af-platform
+# spec:
+#   minAvailable: 1
+#   selector:
+#     matchLabels:
+#       app: mcp-server-cric

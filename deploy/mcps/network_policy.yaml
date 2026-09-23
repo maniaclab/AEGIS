@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-servers-ingress-only
+  namespace: aegis
+spec:
+  # Targets every MCP server pod (all carry role: mcp-server)
+  podSelector:
+    matchLabels:
+      role: mcp-server
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow the nginx ingress controller to reach MCP pods.
+    # namespaceSelector + podSelector in the same `from` entry are ANDed:
+    # traffic must originate from a pod matching BOTH selectors.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+    # Allow pods within af-platform itself (e.g. chatbots calling MCPs
+    # internally).  Remove this rule if intra-namespace access should also
+    # be locked down.
+    - from:
+        - podSelector: {}

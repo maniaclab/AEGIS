@@ -1,0 +1,30 @@
+# Local development dependencies for OWL. The service itself runs on the host
+# (`npm start` / `npm run worker`) so it can be restarted and debugged quickly.
+#
+#   docker compose up -d db
+#
+# Port 5433 on the host, to stay out of the way of any local Postgres on 5432.
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: owl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: owl
+      POSTGRES_PASSWORD: owl
+      POSTGRES_DB: owl
+    ports:
+      - "5433:5432"
+    volumes:
+      - owl-pgdata:/var/lib/postgresql/data
+      # Runs only on first initialization of an empty data directory.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U owl -d owl"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  owl-pgdata:

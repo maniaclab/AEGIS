@@ -1,0 +1,30 @@
+# Non-secret OWL configuration. Secrets live in owl-db, owl-s3, owl-mattermost,
+# openai-key and mcp-keys; identity comes from the keycloak-config ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: owl-config
+  namespace: aegis
+data:
+  LOG_LEVEL: "info" # debug also logs request bodies, which contain submitted knowledge
+
+  # ── who may write ──────────────────────────────────────────────────────────
+  # Keycloak sub, preferred_username or email; comma-separated. Anyone not listed can
+  # read, and anything they submit lands in quarantine until a trusted writer or a
+  # second independent source confirms it. Shared API keys are read-only regardless.
+  OWL_TRUSTED_WRITERS: "ivukotic"
+
+  # ── models ─────────────────────────────────────────────────────────────────
+  # Cheap, high-volume path — extraction, novelty, pairwise triage — on the local vLLM
+  # running on the DGX Sparks. TODO: replace with the Spark's actual address as reachable
+  # from af-platform pods.
+  OWL_CHEAP_BASE_URL: "http://CHANGEME-spark1:8000/v1"
+  OWL_MODEL_CHEAP: "nano-30b"
+
+  # Rare path — adjudication of scope qualifications and true conflicts.
+  OWL_STRONG_BASE_URL: "https://api.openai.com/v1"
+  OWL_MODEL_STRONG: "gpt-5"
+
+  # Baked into the vector(N) column type. Changing it needs `npm run reembed`.
+  OWL_EMBEDDING_MODEL: "text-embedding-3-large"
+  OWL_EMBEDDING_DIMENSIONS: "3072"

@@ -1,0 +1,110 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mcp-server-rucio
+  namespace: aegis
+spec:
+  selector:
+    app: mcp-server-rucio
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rucio-mcp
+  namespace: aegis
+  labels:
+    k8s-app: rucio-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - rucio.af.atlas-ml.org
+      secretName: letsencrypt-generated-rucio-mcp
+  rules:
+    - host: rucio.af.atlas-ml.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-server-rucio
+                port:
+                  number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server-rucio
+  namespace: aegis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server-rucio
+  template:
+    metadata:
+      labels:
+        app: mcp-server-rucio
+        role: mcp-server
+    spec:
+      serviceAccountName: mcp-server-rucio
+      automountServiceAccountToken: false
+      volumes:
+        - name: rucio-cfg
+          configMap:
+            name: rucio-config
+            defaultMode: 420
+        - name: x509-secret
+          secret:
+            secretName: x509-proxy
+            defaultMode: 292
+      containers:
+        - name: mcp-server-rucio
+          # image: hub.opensciencegrid.org/maniaclab/mcp-server-rucio
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio
+          # image: ivukotic/mcp-server-rucio
+          # command: ["sh", "-c", "echo Hello Rucio! && sleep 3600"]
+          ports:
+            - containerPort: 8000
+          env:
+            - name: RUCIO_CONFIG
+              value: /opt/rucio/etc/rucio.cfg
+          envFrom:
+            - secretRef:
+                name: mcp-keys
+            - secretRef:
+                name: rucio-mcp-token
+            # - configMapRef:
+            #     name: keycloak-config
+          volumeMounts:
+            - name: rucio-cfg
+              mountPath: /opt/rucio/etc/
+            - name: x509-secret
+              readOnly: true
+              mountPath: /etc/grid-security-ro
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: mcp-server-rucio
+#   namespace: af-platform
+# spec:
+#   minAvailable: 1
+#   selector:
+#     matchLabels:
+#       app: mcp-server-rucio

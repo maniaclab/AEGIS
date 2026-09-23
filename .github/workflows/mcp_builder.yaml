@@ -1,0 +1,107 @@
+name: MCP builder
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - "sparks/**"
+      - "deploy/**"
+      - "claw_at_cern/**"
+
+jobs:
+  build-and-push-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to registries
+        continue-on-error: true
+        run: |
+          docker login hub.opensciencegrid.org \
+            -u "${{ secrets.HARBOR_USERNAME }}" -p "${{ secrets.HARBOR_PASSWORD }}" &
+          docker login harbor.af.uchicago.edu \
+            -u "${{ secrets.HARBOR_AF_USER }}" -p "${{ secrets.HARBOR_AF_PASS }}" &
+          docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}" &
+          wait
+
+      - name: Set date tag
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Build and Push ES MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/Elasticsearch
+          file: mcps/Elasticsearch/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch,hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch,harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-elasticsearch:latest,ivukotic/mcp-server-elasticsearch:${{ steps.date.outputs.date }}"
+
+      - name: Build and Push Executor MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/Executor
+          file: mcps/Executor/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-executor,hub.opensciencegrid.org/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-executor,harbor.af.uchicago.edu/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-executor:latest,ivukotic/mcp-server-executor:${{ steps.date.outputs.date }}"
+
+      - name: Build and Push Knowledge MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/Knowledge
+          file: mcps/Knowledge/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-knowledge,hub.opensciencegrid.org/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge,harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-knowledge:latest,ivukotic/mcp-server-knowledge:${{ steps.date.outputs.date }}"
+
+      - name: Build and Push Rucio MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/Rucio
+          file: mcps/Rucio/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-rucio,hub.opensciencegrid.org/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-rucio:latest,ivukotic/mcp-server-rucio:${{ steps.date.outputs.date }}"
+
+      - name: Build and Push CRIC MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/CRIC
+          file: mcps/CRIC/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-cric,hub.opensciencegrid.org/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-cric,harbor.af.uchicago.edu/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-cric:latest,ivukotic/mcp-server-cric:${{ steps.date.outputs.date }}"
+
+      - name: Build and Push GGUS MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/GGUS
+          file: mcps/GGUS/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-ggus,hub.opensciencegrid.org/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus,harbor.af.uchicago.edu/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-ggus:latest,ivukotic/mcp-server-ggus:${{ steps.date.outputs.date }}"
+
+      # One image serves both OWL roles; OWL_MODE picks mcp or worker at runtime.
+      - name: Build and Push OWL MCP Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/OWL
+          file: mcps/OWL/Dockerfile
+          push: true
+          # tags: hub.opensciencegrid.org/maniaclab/mcp-server-owl,hub.opensciencegrid.org/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-owl,harbor.af.uchicago.edu/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
+          # tags: "ivukotic/mcp-server-owl:latest,ivukotic/mcp-server-owl:${{ steps.date.outputs.date }}"

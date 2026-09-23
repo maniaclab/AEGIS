@@ -1,0 +1,110 @@
+# Postgres + pgvector — the system of record for OWL.
+#
+# Claims, entities, typed edges, disputes, the job queue and the embeddings all live here.
+# One transactional store is deliberate: a supersession touches several rows at once, and a
+# separate graph or vector database would add a second consistency domain for no gain at
+# our scale.
+#
+# Single instance, PVC-backed, no operator. If this ever needs HA or PITR, move it to
+# CloudNativePG — the application only knows a connection string.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: owl-postgres-init
+  namespace: aegis
+data:
+  # Runs once, on first initialization of an empty data directory. Only extensions belong
+  # here (they need superuser); the schema itself is owned by the migrations in owl-worker.
+  # Keep in sync with mcps/OWL/db/init/01-extensions.sql.
+  01-extensions.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector;      -- pgvector: claim embeddings, HNSW index
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;     -- trigram similarity, for alias matching
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; -- claim and document identifiers
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: owl-postgres
+  namespace: aegis
+spec:
+  selector:
+    app: owl-postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: owl-postgres
+  namespace: aegis
+spec:
+  serviceName: owl-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: owl-postgres
+  template:
+    metadata:
+      labels:
+        app: owl-postgres
+        role: owl-database
+    spec:
+      serviceAccountName: owl-postgres
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg17
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: PGDATA
+              # Must be a subdirectory of the mount, not the mount itself: initdb
+              # refuses a directory containing lost+found.
+              value: /var/lib/postgresql/data/pgdata
+          envFrom:
+            # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+            - secretRef:
+                name: owl-db
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2"
+      volumes:
+        - name: init
+          configMap:
+            name: owl-postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # storageClassName: <cluster default is used if unset>
+        resources:
+          requests:
+            storage: 50Gi
