@@ -9,7 +9,7 @@ resources:
   - mcp-secret-sealed.yaml
   - es-secret-sealed.yaml
   - openai-key-sealed.yaml
-  - grid-certs-secret_sealed.yaml
+  - grid-certs-secret-sealed.yaml
   - rucio-mcp-token-sealed.yaml
   - ggus-token-sealed.yaml
   # OWL — seal the templates in secrets/ and uncomment (see mcps/OWL/TODO.md, Phase 0)

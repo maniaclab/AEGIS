@@ -33,7 +33,9 @@ jobs:
 
       - name: Set date tag
         id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Build and Push ES MCP Image
         uses: docker/build-push-action@v7
@@ -44,6 +46,13 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch,hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch,harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-elasticsearch:latest,ivukotic/mcp-server-elasticsearch:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-elasticsearch
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
 
       - name: Build and Push Executor MCP Image
         uses: docker/build-push-action@v7
@@ -54,6 +63,13 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-executor,hub.opensciencegrid.org/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-executor,harbor.af.uchicago.edu/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-executor:latest,ivukotic/mcp-server-executor:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-executor
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
 
       - name: Build and Push Knowledge MCP Image
         uses: docker/build-push-action@v7
@@ -64,6 +80,13 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-knowledge,hub.opensciencegrid.org/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge,harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-knowledge:latest,ivukotic/mcp-server-knowledge:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-knowledge
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
 
       - name: Build and Push Rucio MCP Image
         uses: docker/build-push-action@v7
@@ -74,6 +97,13 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-rucio,hub.opensciencegrid.org/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-rucio:latest,ivukotic/mcp-server-rucio:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-rucio
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
 
       - name: Build and Push CRIC MCP Image
         uses: docker/build-push-action@v7
@@ -84,6 +114,13 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-cric,hub.opensciencegrid.org/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-cric,harbor.af.uchicago.edu/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-cric:latest,ivukotic/mcp-server-cric:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-cric
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
 
       - name: Build and Push GGUS MCP Image
         uses: docker/build-push-action@v7
@@ -94,6 +131,13 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-ggus,hub.opensciencegrid.org/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus,harbor.af.uchicago.edu/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-ggus:latest,ivukotic/mcp-server-ggus:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-ggus
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
 
       # One image serves both OWL roles; OWL_MODE picks mcp or worker at runtime.
       - name: Build and Push OWL MCP Image
@@ -105,3 +149,10 @@ jobs:
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-owl,hub.opensciencegrid.org/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
           tags: harbor.af.uchicago.edu/maniaclab/mcp-server-owl,harbor.af.uchicago.edu/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
           # tags: "ivukotic/mcp-server-owl:latest,ivukotic/mcp-server-owl:${{ steps.date.outputs.date }}"
+          labels: |
+            org.opencontainers.image.title=mcp-server-owl
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
