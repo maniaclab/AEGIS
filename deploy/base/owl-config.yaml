@@ -17,7 +17,7 @@ data:
   # ── models ─────────────────────────────────────────────────────────────────
   # Cheap, high-volume path — extraction, novelty, pairwise triage — on the local vLLM
   # running on the DGX Sparks. TODO: replace with the Spark's actual address as reachable
-  # from af-platform pods.
+  # from aegis pods.
   OWL_CHEAP_BASE_URL: "http://CHANGEME-spark1:8000/v1"
   OWL_MODEL_CHEAP: "nano-30b"
 

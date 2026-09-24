@@ -21,7 +21,7 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: ingress-nginx
-    # Allow pods within af-platform itself (e.g. chatbots calling MCPs
+    # Allow pods within aegis itself (e.g. chatbots calling MCPs
     # internally).  Remove this rule if intra-namespace access should also
     # be locked down.
     - from:

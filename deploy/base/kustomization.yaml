@@ -18,7 +18,7 @@ resources:
   # - owl-mattermost-sealed.yaml
 
   # x509 proxy renewal
-  - x509.yaml
+  # - x509.yaml
 
   # rbac
   - rbac.yaml
@@ -29,4 +29,4 @@ resources:
   - owl-config.yaml
 
   # owl system of record (postgres + pgvector)
-  - owl-postgres.yaml
+  # - owl-postgres.yaml
