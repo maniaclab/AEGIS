@@ -2,7 +2,7 @@ namespace: aegis
 
 resources:
   # - es_mcp.yaml
-  - executor_mcp.yaml
+  # - executor_mcp.yaml
   - knowledge_mcp.yaml
   # - cric_mcp.yaml
   # - rucio_mcp.yaml
