@@ -18,7 +18,7 @@ resources:
   # - owl-mattermost-sealed.yaml
 
   # x509 proxy renewal
-  # - x509.yaml
+  - x509.yaml
 
   # rbac
   - rbac.yaml
