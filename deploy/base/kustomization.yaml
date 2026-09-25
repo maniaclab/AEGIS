@@ -12,10 +12,7 @@ resources:
   - grid-certs-secret-sealed.yaml
   - rucio-mcp-token-sealed.yaml
   - ggus-token-sealed.yaml
-  # OWL — seal the templates in secrets/ and uncomment (see mcps/OWL/TODO.md, Phase 0)
-  # - owl-db-sealed.yaml
-  # - owl-s3-sealed.yaml
-  # - owl-mattermost-sealed.yaml
+  - owl-secrets-sealed.yaml
 
   # x509 proxy renewal
   - x509.yaml
@@ -29,4 +26,4 @@ resources:
   - owl-config.yaml
 
   # owl system of record (postgres + pgvector)
-  # - owl-postgres.yaml
+  - owl-postgres.yaml

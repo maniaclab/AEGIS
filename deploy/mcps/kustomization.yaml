@@ -7,5 +7,5 @@ resources:
   - cric_mcp.yaml
   - rucio_mcp.yaml
   - ggus_mcp.yaml
-  # - owl_mcp.yaml
+  - owl_mcp.yaml
   - network_policy.yaml
