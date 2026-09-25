@@ -69,6 +69,14 @@ spec:
                 name: mcp-keys
             - secretRef:
                 name: ggus-token
+            - configMapRef:
+                name: keycloak-config
+          env:
+            # Overrides the shared audience so tokens minted for other MCPs are rejected here.
+            - name: KEYCLOAK_AUDIENCE
+              value: ggus-mcp
+            - name: MCP_RESOURCE_URL
+              value: https://ggus.af.atlas-ml.org/mcp
           resources:
             requests:
               memory: "256Mi"

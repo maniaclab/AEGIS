@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import express, { Request, Response } from 'express';
-import { requireApiKey } from './authMiddleware.js';
+import { protectedResourceMetadata, requireApiKey } from './authMiddleware.js';
 import { log, logUpstream, requestLogger, runTool } from './logger.js';
 
 import cors from 'cors';
@@ -360,9 +360,13 @@ export async function createGgusMcpServer(): Promise<McpServer> {
 const app = express();
 app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['WWW-Authenticate'],
 }));
 app.use(express.json());
 app.use(requestLogger);
+
+app.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 
 app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
     const transport = new StreamableHTTPServerTransport({
