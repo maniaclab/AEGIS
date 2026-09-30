@@ -1,7 +1,7 @@
-# AF MCP servers
+# MCP servers
 
 These MCP servers give AI assistants (Claude, ChatGPT, VS Code Copilot, OpenClaw, …) access to
-the ATLAS Analysis Facility and the grid services around it. Each one runs in the AF
+the ATLAS Analysis Facility and the grid services around it. Each one runs in the UChicago
 Kubernetes cluster and is reachable over HTTPS using the MCP **Streamable HTTP** transport.
 
 | Server | What it gives the assistant | Endpoint | Docs |
@@ -12,7 +12,7 @@ Kubernetes cluster and is reachable over HTTPS using the MCP **Streamable HTTP**
 | Knowledge | The USATLAS Analysis Facility documentation | `https://knowledge.af.atlas-ml.org/mcp` | [Knowledge](Knowledge/README.md) |
 | Executor | Run shell commands on AF login nodes over SSH | `https://executor.af.atlas-ml.org/mcp` | [Executor](Executor/README.md) |
 | OWL | The ATLAS AI Librarian: curated, cited knowledge (early phase) | `https://owl.af.atlas-ml.org/mcp` | [OWL](OWL/README.md) |
-| Rucio | ATLAS Rucio: datasets, replicas, rules, RSEs | `https://rucio.af.atlas-ml.org/site/atlas/` | [Rucio](Rucio/README.md) |
+| Rucio | ATLAS Rucio: datasets, replicas, rules, RSEs | `https://rucio.af.atlas-ml.org/mcp` | [Rucio](Rucio/README.md) |
 
 Each server's README lists its tools and has copy-paste setup for every client below.
 
@@ -20,7 +20,7 @@ Each server's README lists its tools and has copy-paste setup for every client b
 
 ## How authentication works
 
-Every server except Rucio accepts either of two credentials:
+Every server accepts either of two credentials:
 
 | | Sign in with CERN (OAuth) | API key |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ OAuth goes through the AF-platform Keycloak (`keycloak-prod.tempest.uchicago.edu
 `AF-platform`) and on to CERN SSO. Clients must use the pre-registered client ID **`af-mcp`**
 with an **empty client secret**: the AF Keycloak does not let clients register themselves.
 
-One API key works for all of these servers except Rucio, which has its own shared secret.
+One API key works for all of these servers.
 Treat either like a password: keep it in an environment variable or your client's secret
 store, never in a file you commit.
 
@@ -99,9 +99,20 @@ must allow custom MCP connectors. Set it up on chatgpt.com; the desktop app uses
 account.
 
 1. **Settings → Security and login**, turn on **Developer mode**.
-2. Create a new app for a remote MCP server: name `<name>`, server URL `<url>`.
-3. Authentication: **OAuth**. OAuth Client ID `af-mcp`, client secret empty.
-4. Connect and log in with CERN.
+2. Create a **New Plugin**: name `<name>`, **Connection → Server URL** `<url>`,
+   **Authentication** `OAuth`.
+3. Open **Advanced OAuth settings** and set:
+
+   | Field | Value |
+   | --- | --- |
+   | Registration method | **User-Defined OAuth Client** |
+   | OAuth client ID | `af-mcp` |
+   | OAuth client secret | *(empty)* |
+   | Token endpoint auth method | **`none`** (the default `client_secret_post` makes **Create** silently do nothing) |
+   | Scopes | the server's scope, e.g. `ggus-mcp` (see its README) |
+
+   The "CIMD is unavailable" notice is expected and harmless.
+4. Tick the risk acknowledgement, **Create**, and log in with CERN.
 
 ChatGPT supports OAuth only; it cannot send an API key.
 
@@ -186,7 +197,7 @@ transport **Streamable HTTP**, enter the URL, and add an `Authorization: Bearer 
 
 ## For maintainers
 
-All servers except Rucio share the same auth middleware (`authMiddleware.ts`) and logging
+All servers share the same auth middleware (`authMiddleware.ts`; for Rucio it runs in an auth proxy in front of the upstream package) and logging
 convention (`logger.ts`: one timestamped line per request, tool call and upstream call;
 `LOG_LEVEL=debug` adds request bodies). OWL extends the middleware with identity resolution.
 

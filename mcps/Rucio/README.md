@@ -11,11 +11,11 @@ results reflect that account's view of Rucio, not yours.
 
 | | |
 | --- | --- |
-| Endpoint | `https://rucio.af.atlas-ml.org/site/atlas/` (Streamable HTTP; note: not `/mcp`) |
-| Auth | Rucio MCP shared secret as `Authorization: Bearer <secret>`. OAuth / CERN login is **not** supported |
+| Endpoint | `https://rucio.af.atlas-ml.org/mcp` (Streamable HTTP) |
+| Auth | CERN login via OAuth (client ID `af-mcp`, scope `rucio-mcp`), or an AF MCP API key |
 
-The shared secret is separate from the AF MCP API key used by the other servers; ask the AF
-MCP maintainers for it.
+Clients set up earlier with the Rucio shared secret on `/site/atlas/` keep working; new
+setups should use `/mcp` and one of the credentials above.
 
 ## Tools
 
@@ -40,61 +40,48 @@ useful for building DID patterns.
 
 ## Connect
 
-Because this server only takes a bearer secret, every client uses the header form. In the
-examples the secret is in the environment variable `RUCIO_MCP_TOKEN`.
-See [the shared connection guide](../README.md#connecting-a-client) for more on each client.
+See [the shared connection guide](../README.md#connecting-a-client) for details and
+troubleshooting.
 
 ### Claude Code
 
 ```bash
-claude mcp add --transport http --scope user rucio https://rucio.af.atlas-ml.org/site/atlas/ --header "Authorization: Bearer $RUCIO_MCP_TOKEN"
+claude mcp add --transport http --scope user --client-id af-mcp --callback-port 8977 rucio https://rucio.af.atlas-ml.org/mcp
 ```
 
-### Claude Desktop
+Leave the client secret empty, then `/mcp` → **rucio** → **Authenticate**.
 
-Custom connectors (**Settings → Connectors**) cannot send a static secret, so add it to the
-config file instead (**Settings → Developer → Edit Config**; needs Node.js). This does not
-carry over to claude.ai.
+### Claude Desktop and claude.ai
 
-```json
-{
-  "mcpServers": {
-    "rucio": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote@latest", "https://rucio.af.atlas-ml.org/site/atlas/", "--header", "Authorization: Bearer ${RUCIO_MCP_TOKEN}"],
-      "env": { "RUCIO_MCP_TOKEN": "<shared secret>" }
-    }
-  }
-}
-```
+**Settings → Connectors → Add custom connector**, URL `https://rucio.af.atlas-ml.org/mcp`,
+**Advanced settings → OAuth Client ID** `af-mcp`, secret empty, then **Connect**.
 
 ### ChatGPT
 
-Not supported: ChatGPT connectors only authenticate with OAuth.
+With Developer mode on, create a **New Plugin** with server URL
+`https://rucio.af.atlas-ml.org/mcp` and authentication **OAuth**. Under **Advanced OAuth settings**:
+registration method **User-Defined OAuth Client**, client ID `af-mcp`, secret empty, token
+endpoint auth method **`none`**, scope `rucio-mcp`. Details in the
+[connection guide](../README.md#chatgpt-web-and-desktop-app).
 
 ### VS Code
 
+In `.vscode/mcp.json` or your user configuration; enter client ID `af-mcp` when asked:
+
 ```json
 {
-  "inputs": [
-    { "type": "promptString", "id": "rucio-mcp-token", "description": "Rucio MCP shared secret", "password": true }
-  ],
   "servers": {
-    "rucio": {
-      "type": "http",
-      "url": "https://rucio.af.atlas-ml.org/site/atlas/",
-      "headers": { "Authorization": "Bearer ${input:rucio-mcp-token}" }
-    }
+    "rucio": { "type": "http", "url": "https://rucio.af.atlas-ml.org/mcp" }
   }
 }
 ```
 
 ### OpenClaw
 
-With `RUCIO_MCP_TOKEN=<shared secret>` in `~/.openclaw/.env`:
+With the API key in `~/.openclaw/.env` as `AF_MCP_API_KEY`:
 
 ```bash
-openclaw mcp set rucio '{"url":"https://rucio.af.atlas-ml.org/site/atlas/","transport":"streamable-http","headers":{"Authorization":"Bearer ${RUCIO_MCP_TOKEN}"}}'
+openclaw mcp set rucio '{"url":"https://rucio.af.atlas-ml.org/mcp","transport":"streamable-http","headers":{"Authorization":"Bearer ${AF_MCP_API_KEY}"}}'
 openclaw mcp probe rucio
 ```
 
@@ -102,25 +89,31 @@ Tools appear as `rucio__rucio_list_dids`, `rucio__rucio_list_replicas`, …
 
 ## Deployment
 
-The image `pip install`s `rucio-mcp` and `rucio-clients`; there is no code of ours beyond
-[scripts/start_rucio_mcp.sh](scripts/start_rucio_mcp.sh), which waits for the grid proxy and
-then runs:
+The pod runs two containers:
+
+| Container | Image | Role |
+| --- | --- | --- |
+| `rucio-auth-proxy` | `mcp-server-rucio-proxy`, from [proxy/](proxy) | Public port 8000. Checks credentials with the same middleware as the other AF MCPs, serves the OAuth metadata, and forwards `/mcp` (and `/site/atlas/`) to rucio-mcp with the shared secret swapped in |
+| `mcp-server-rucio` | `mcp-server-rucio`, this directory | Upstream `rucio-mcp` on `127.0.0.1:8001`, reachable only from inside the pod |
+
+[scripts/start_rucio_mcp.sh](scripts/start_rucio_mcp.sh) waits for the grid proxy and then runs:
 
 ```bash
-rucio-mcp serve --transport http --host 0.0.0.0 --port 8000 --site atlas \
+rucio-mcp serve --transport http --host 127.0.0.1 --port 8001 --site atlas \
   --auth-type x509_proxy --read-only --shared-secret "$RUCIO_MCP_TOKEN" --resource-url ...
 ```
 
-| Setting | Source |
-| --- | --- |
-| `RUCIO_MCP_TOKEN` | Shared secret clients must send, from the `rucio-mcp-token` secret |
-| `X509_USER_PROXY`, `X509_CERT_DIR` | Grid proxy and CA certificates, mounted into the pod |
-| `RUCIO_CONFIG` | `rucio.cfg`, from the `rucio-config` ConfigMap |
+| Setting | Container | Meaning |
+| --- | --- | --- |
+| `RUCIO_MCP_TOKEN` | both | Secret between proxy and rucio-mcp, still also accepted from clients; from the `rucio-mcp-token` secret |
+| `UPSTREAM_URL` | proxy | Where to forward: `http://127.0.0.1:8001/site/atlas/` |
+| `KEYCLOAK_AUDIENCE`, `MCP_RESOURCE_URL` | proxy | `rucio-mcp` and `https://rucio.af.atlas-ml.org/mcp`, plus the [common variables](../README.md#for-maintainers) |
+| `X509_USER_PROXY`, `X509_CERT_DIR`, `RUCIO_CONFIG` | rucio-mcp | Grid proxy, CA certificates and `rucio.cfg`, mounted into the pod |
 
-`GET /healthz` answers `ok` without auth. The image is not pinned to a `rucio-mcp` version,
-so a rebuild picks up upstream changes, including to the tool list. Deployment:
-[rucio_mcp.yaml](../../deploy/mcps/rucio_mcp.yaml).
+The proxy logs one line per request and per forwarded call. The rucio-mcp image is not
+pinned to a package version, so a rebuild picks up upstream changes, including to the tool
+list. Deployment: [rucio_mcp.yaml](../../deploy/mcps/rucio_mcp.yaml).
 
 Per-user identity (each caller acting as their own Rucio account) would need one of
 rucio-mcp's multi-user modes, its credential-broker or OIDC mode, instead of the shared
-secret.
+secret behind the proxy.

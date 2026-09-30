@@ -41,9 +41,11 @@ secret empty, then **Connect**.
 
 ### ChatGPT
 
-With Developer mode on, create an app with server URL
-`https://knowledge.af.atlas-ml.org/mcp`, authentication **OAuth**, client ID `af-mcp`, secret
-empty.
+With Developer mode on, create a **New Plugin** with server URL
+`https://knowledge.af.atlas-ml.org/mcp` and authentication **OAuth**. Under **Advanced OAuth settings**:
+registration method **User-Defined OAuth Client**, client ID `af-mcp`, secret empty, token
+endpoint auth method **`none`**, scope `knowledge-mcp`. Details in the
+[connection guide](../README.md#chatgpt-web-and-desktop-app).
 
 ### VS Code
 
