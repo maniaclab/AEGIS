@@ -105,6 +105,21 @@ jobs:
             org.opencontainers.image.created=${{ steps.date.outputs.created }}
             org.opencontainers.image.vendor=maniaclab
 
+      - name: Build and Push Rucio MCP Auth Proxy Image
+        uses: docker/build-push-action@v7
+        with:
+          context: mcps/Rucio/proxy
+          file: mcps/Rucio/proxy/Dockerfile
+          push: true
+          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy:${{ steps.date.outputs.date }},
+          labels: |
+            org.opencontainers.image.title=mcp-server-rucio-proxy
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            org.opencontainers.image.created=${{ steps.date.outputs.created }}
+            org.opencontainers.image.vendor=maniaclab
+
       - name: Build and Push CRIC MCP Image
         uses: docker/build-push-action@v7
         with:

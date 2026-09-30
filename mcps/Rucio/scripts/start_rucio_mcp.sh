@@ -17,4 +17,5 @@ done
 #     --port "${RUCIO_MCP_PORT:-8000}" \
 #     --auth-type "${RUCIO_MCP_AUTH_TYPE:-x509_proxy}"
 
-exec rucio-mcp serve --transport "http" --host 0.0.0.0  --port "8000" --site atlas --auth-type "x509_proxy" --read-only --shared-secret ${RUCIO_MCP_TOKEN} --resource-url "https://rucio.atlas-ml.org"
+# Only the auth proxy sidecar (port 8000 in the same pod) talks to rucio-mcp, so it listens on localhost.
+exec rucio-mcp serve --transport "http" --host 127.0.0.1 --port "8001" --site atlas --auth-type "x509_proxy" --read-only --shared-secret "${RUCIO_MCP_TOKEN}" --resource-url "https://rucio.af.atlas-ml.org"

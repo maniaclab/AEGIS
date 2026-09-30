@@ -1,4 +1,4 @@
-# RBAC for AFchatkit and all MCP servers.
+# RBAC for  all MCP servers.
 #
 # Each workload gets its own ServiceAccount (with token auto-mount disabled —
 # none of these services call the Kubernetes API directly) and a least-privilege
@@ -9,46 +9,6 @@
 #   ServiceAccount  →  <workload-name>
 #   Role            →  <workload-name>-role
 #   RoleBinding     →  <workload-name>-rolebinding
-
-# ──────────────────────────────────────────────────────────────
-# AFchatkit
-# ──────────────────────────────────────────────────────────────
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: afchatkit
-  namespace: aegis
-automountServiceAccountToken: false
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: afchatkit-role
-  namespace: aegis
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames: ["openai-key", "chatkit-workflow-id", "mcp"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["keycloak-config"]
-    verbs: ["get"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: afchatkit-rolebinding
-  namespace: aegis
-subjects:
-  - kind: ServiceAccount
-    name: afchatkit
-    namespace: aegis
-roleRef:
-  kind: Role
-  name: afchatkit-role
-  apiGroup: rbac.authorization.k8s.io
-
 
 # ──────────────────────────────────────────────────────────────
 # MCP – Elasticsearch
@@ -194,6 +154,10 @@ rules:
     resources: ["secrets"]
     resourceNames: ["mcp-keys", "x509-proxy"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -233,7 +197,7 @@ rules:
     verbs: ["get"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    resourceNames: ["rucio-config"]
+    resourceNames: ["rucio-config", "keycloak-config"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -271,6 +235,10 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     resourceNames: ["mcp-keys", "ggus-token"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["keycloak-config"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

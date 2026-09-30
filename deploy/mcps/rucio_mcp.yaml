@@ -72,18 +72,13 @@ spec:
           image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio
           # image: ivukotic/mcp-server-rucio
           # command: ["sh", "-c", "echo Hello Rucio! && sleep 3600"]
-          ports:
-            - containerPort: 8000
+          # Listens on 127.0.0.1:8001 only; reached through the rucio-auth-proxy container below.
           env:
             - name: RUCIO_CONFIG
               value: /opt/rucio/etc/rucio.cfg
           envFrom:
             - secretRef:
-                name: mcp-keys
-            - secretRef:
                 name: rucio-mcp-token
-            # - configMapRef:
-            #     name: keycloak-config
           volumeMounts:
             - name: rucio-cfg
               mountPath: /opt/rucio/etc/
@@ -97,6 +92,37 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+        # Checks Keycloak tokens / AF API keys like the other MCPs and forwards to rucio-mcp
+        # with its shared secret, so Rucio gets the same OAuth login as everything else.
+        - name: rucio-auth-proxy
+          image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy
+          ports:
+            - containerPort: 8000
+          env:
+            - name: UPSTREAM_URL
+              value: http://127.0.0.1:8001/site/atlas/
+            - name: KEYCLOAK_AUDIENCE
+              value: rucio-mcp
+            - name: MCP_RESOURCE_URL
+              value: https://rucio.af.atlas-ml.org/mcp
+          envFrom:
+            - secretRef:
+                name: mcp-keys
+            - secretRef:
+                name: rucio-mcp-token
+            - configMapRef:
+                name: keycloak-config
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
 ---
 # apiVersion: policy/v1
 # kind: PodDisruptionBudget
