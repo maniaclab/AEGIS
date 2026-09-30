@@ -64,3 +64,20 @@ to install tailgate run:
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 ```
+
+## Secrets
+
+To store a secret in secret store:
+
+```bash
+echo "somesecret" | openclaw secrets store set OPENCLAW_GATEWAY_TOKEN --kind secret
+```
+
+To list secrets:
+
+```bash
+openclaw secrets store list
+```
+
+To use a secret in openclaw.json replace value with eg. "OPENCLAW_GATEWAY_TOKEN".
+

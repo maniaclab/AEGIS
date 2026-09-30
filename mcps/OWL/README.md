@@ -27,6 +27,60 @@ processes, and the worker's startup checks.
 
 ---
 
+## Connect
+
+| | |
+| --- | --- |
+| Endpoint | `https://owl.af.atlas-ml.org/mcp` (Streamable HTTP) |
+| Auth | CERN login via OAuth (client ID `af-mcp`, scope `owl-mcp`), or an AF MCP API key |
+
+Log in with CERN if you want to contribute knowledge: an API key, or any other service
+credential, is read-only. See [the shared connection guide](../README.md#connecting-a-client)
+for details and troubleshooting.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http --scope user --client-id af-mcp --callback-port 8977 owl https://owl.af.atlas-ml.org/mcp
+```
+
+Leave the client secret empty, then `/mcp` → **owl** → **Authenticate**.
+
+### Claude Desktop and claude.ai
+
+**Settings → Connectors → Add custom connector**, URL `https://owl.af.atlas-ml.org/mcp`,
+**Advanced settings → OAuth Client ID** `af-mcp`, secret empty, then **Connect**.
+
+### ChatGPT
+
+With Developer mode on, create an app with server URL `https://owl.af.atlas-ml.org/mcp`,
+authentication **OAuth**, client ID `af-mcp`, secret empty.
+
+### VS Code
+
+In `.vscode/mcp.json` or your user configuration; enter client ID `af-mcp` when asked:
+
+```json
+{
+  "servers": {
+    "owl": { "type": "http", "url": "https://owl.af.atlas-ml.org/mcp" }
+  }
+}
+```
+
+### OpenClaw
+
+With the API key in `~/.openclaw/.env` as `AF_MCP_API_KEY` (read-only access):
+
+```bash
+openclaw mcp set owl '{"url":"https://owl.af.atlas-ml.org/mcp","transport":"streamable-http","headers":{"Authorization":"Bearer ${AF_MCP_API_KEY}"}}'
+openclaw mcp probe owl
+```
+
+Tools appear as `owl__owl_status`, and later `owl__search_knowledge`, …
+
+---
+
 ## Core idea: claims, not chunks
 
 OWL does not store document chunks. It stores **claims** — atomic, self-contained
@@ -130,7 +184,7 @@ to a plain directory so no credentials are needed to run OWL on a laptop.
 | --- | --- |
 | `owl_status` | Version, database reachability, claim count, configured models and blob backend, and how the caller is identified. The only tool that exists today. |
 
-### Read
+### Read (planned)
 
 | Tool | Purpose |
 | --- | --- |
@@ -141,7 +195,7 @@ to a plain directory so no credentials are needed to run OWL on a laptop.
 | `list_disputes` | Open contradictions, ranked by how often query traffic hits them. |
 | `fetch_source` | Retrieve the original document, or just the cited span, behind a claim. |
 
-### Write
+### Write (planned)
 
 | Tool | Purpose |
 | --- | --- |
@@ -208,6 +262,8 @@ person via Keycloak (realm `AF-platform`), and the token's group claims carry th
 classification enforcement.
 
 * Shared API keys authenticate **service** identities and are **read-only** by default.
+  Keycloak service-account tokens (client-credentials, e.g. the AF chatbot's
+  `af-platform-cli`) are treated the same way: they identify a client, not a person.
 * A **trusted-writer list** (`OWL_TRUSTED_WRITERS`) holds the identities whose claims commit
   directly. At launch that is one person. Every other authenticated identity can read, and
   anything it submits lands in `quarantine` until a second source or a trusted writer
@@ -230,7 +286,7 @@ clear which half regressed. Without it there is no way to tell whether a change 
 
 ## Deployment
 
-Runs in the `af-platform` namespace alongside the other MCPs.
+Runs in the `aegis` namespace alongside the other MCPs.
 
 | Resource | Name |
 | --- | --- |
@@ -271,18 +327,6 @@ Manifests: [owl_mcp.yaml](../../deploy/mcps/owl_mcp.yaml) and
 [owl-postgres.yaml](../../deploy/base/owl-postgres.yaml).
 Images are built by [mcp_builder.yaml](../../.github/workflows/mcp_builder.yaml)
 on push to `main`.
-
-### Connecting
-
-```json
-"OWL_MCP_REMOTE": {
-    "url": "https://owl.af.atlas-ml.org/mcp",
-    "type": "http",
-    "headers": {
-        "Authorization": "Bearer <token>"
-    }
-}
-```
 
 ---
 
@@ -333,7 +377,8 @@ curl -s -X POST localhost:3400/mcp \
 | `OPENAI_API_KEY` | Key for the hosted strong model and for embeddings |
 | `OWL_EMBEDDING_MODEL` | Embedding model id (`text-embedding-3-large`, 3072-dim) |
 | `API_KEY_1`, `API_KEY_2` | Shared service keys — read-only |
-| `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_AUDIENCE` | Identity for attributed writes |
+| `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_AUDIENCE` | Identity for attributed writes; the audience is `owl-mcp` in production |
+| `MCP_RESOURCE_URL`, `MCP_OAUTH_SCOPE` | Public `/mcp` URL and advertised scope, for OAuth discovery |
 | `OWL_TRUSTED_WRITERS` | Identities whose claims commit without quarantine |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Original-document store |
 | `BLOB_DIR` | Filesystem fallback for the blob store, for local dev |
