@@ -17,5 +17,4 @@ done
 #     --port "${RUCIO_MCP_PORT:-8000}" \
 #     --auth-type "${RUCIO_MCP_AUTH_TYPE:-x509_proxy}"
 
-echo $RUCIO_MCP_TOKEN
-exec rucio-mcp serve --transport "http" --host 0.0.0.0  --port "8000" --site atlas --auth-type "x509_proxy" --shared-secret ${RUCIO_MCP_TOKEN} --resource-url "https://rucio.atlas-ml.org"
+exec rucio-mcp serve --transport "http" --host 0.0.0.0  --port "8000" --site atlas --auth-type "x509_proxy" --read-only --shared-secret ${RUCIO_MCP_TOKEN} --resource-url "https://rucio.atlas-ml.org"
