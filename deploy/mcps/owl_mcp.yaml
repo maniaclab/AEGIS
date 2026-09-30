@@ -74,6 +74,11 @@ spec:
           env:
             - name: OWL_MODE
               value: mcp
+            # Overrides the shared audience so tokens minted for other MCPs are rejected here.
+            - name: KEYCLOAK_AUDIENCE
+              value: owl-mcp
+            - name: MCP_RESOURCE_URL
+              value: https://owl.af.atlas-ml.org/mcp
           envFrom:
             - secretRef:
                 name: mcp-keys # API_KEY_1, API_KEY_2 — read-only service keys

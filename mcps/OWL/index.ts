@@ -10,7 +10,7 @@ import cors from 'cors';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
-import { requireIdentity } from './authMiddleware.js';
+import { protectedResourceMetadata, requireIdentity } from './authMiddleware.js';
 import { log, requestLogger } from './logger.js';
 import { blobBackend, config } from './config.js';
 import { closePool, dbStatus } from './db/pool.js';
@@ -41,9 +41,13 @@ export async function createOwlMcpServer(identity?: Identity): Promise<McpServer
 const app = express();
 app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['WWW-Authenticate'],
 }));
 app.use(express.json({ limit: process.env.OWL_MAX_BODY ?? '8mb' }));
 app.use(requestLogger);
+
+app.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 
 /** Unauthenticated, for kubelet probes. Reports process liveness, not database health. */
 app.get('/healthz', (_req: Request, res: Response) => {

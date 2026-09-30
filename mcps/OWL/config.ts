@@ -40,6 +40,10 @@ export const config = {
         url: process.env.KEYCLOAK_URL,
         realm: process.env.KEYCLOAK_REALM,
         audience: process.env.KEYCLOAK_AUDIENCE,
+        /** Public URL of /mcp; enables OAuth discovery for clients that send no token. */
+        resourceUrl: process.env.MCP_RESOURCE_URL,
+        /** Keycloak client scope that adds the audience; by convention named like it. */
+        scope: process.env.MCP_OAUTH_SCOPE ?? process.env.KEYCLOAK_AUDIENCE,
     },
 
     /** High-volume path: extraction, novelty, pair triage. Local vLLM on the Sparks. */

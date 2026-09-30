@@ -73,6 +73,14 @@ spec:
           envFrom:
             - secretRef:
                 name: mcp-keys
+            - configMapRef:
+                name: keycloak-config
+          env:
+            # Overrides the shared audience so tokens minted for other MCPs are rejected here.
+            - name: KEYCLOAK_AUDIENCE
+              value: cric-mcp
+            - name: MCP_RESOURCE_URL
+              value: https://cric.af.atlas-ml.org/mcp
           volumeMounts:
             - name: x509-secret
               readOnly: true

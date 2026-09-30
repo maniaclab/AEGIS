@@ -11,9 +11,9 @@ import jwksClient from 'jwks-rsa';
 import { config } from './config.js';
 
 export interface Identity {
-    /** A real person (Keycloak token) or a shared service key. */
+    /** A real person (Keycloak user token) or a service (shared key or Keycloak service account). */
     kind: 'person' | 'service';
-    /** Stable id used in provenance and audit rows: `kc:<sub>` or `svc:<n>`. */
+    /** Stable id used in provenance and audit rows: `kc:<sub>`, `svc:<n>` or `svc:kc:<client>`. */
     id: string;
     username?: string;
     email?: string;
@@ -33,9 +33,13 @@ declare global {
     }
 }
 
-const keycloak = config.keycloak.url && config.keycloak.realm
+export const keycloakIssuer = config.keycloak.url && config.keycloak.realm
+    ? `${config.keycloak.url}/realms/${config.keycloak.realm}`
+    : null;
+
+const keycloak = keycloakIssuer
     ? jwksClient({
-        jwksUri: `${config.keycloak.url}/realms/${config.keycloak.realm}/protocol/openid-connect/certs`,
+        jwksUri: `${keycloakIssuer}/protocol/openid-connect/certs`,
         cache: true,
         cacheMaxAge: 600_000,
     })
@@ -63,7 +67,12 @@ export function identifyServiceKey(token: string): Identity | null {
     };
 }
 
-/** Verify a Keycloak access token and turn its claims into a person identity, or null. */
+/**
+ * Verify a Keycloak access token and turn its claims into an identity, or null.
+ *
+ * Client-credentials tokens are signed by the same realm but stand for a machine, not a
+ * person, so they get the same read-only service identity as a shared key.
+ */
 export async function identifyKeycloakToken(token: string): Promise<Identity | null> {
     if (!keycloak) return null;
     try {
@@ -72,6 +81,7 @@ export async function identifyKeycloakToken(token: string): Promise<Identity | n
         const signingKey = await getSigningKey(decoded.header.kid);
         const payload = jwt.verify(token, signingKey, {
             algorithms: ['RS256'],
+            issuer: keycloakIssuer!,
             ...(config.keycloak.audience && { audience: config.keycloak.audience }),
         }) as JwtPayload;
 
@@ -81,6 +91,25 @@ export async function identifyKeycloakToken(token: string): Promise<Identity | n
         const username = typeof payload.preferred_username === 'string'
             ? payload.preferred_username
             : undefined;
+
+        // Keycloak names service-account users `service-account-<client>` and its
+        // service_account scope adds `client_id` (`clientId` before Keycloak 25); any of
+        // these marks a client-credentials token.
+        if (
+            username?.startsWith('service-account-')
+            || typeof payload.client_id === 'string'
+            || typeof payload.clientId === 'string'
+        ) {
+            return {
+                kind: 'service',
+                id: `svc:kc:${typeof payload.azp === 'string' ? payload.azp : sub}`,
+                username,
+                groups: [],
+                canWrite: false,
+                trusted: false,
+            };
+        }
+
         const email = typeof payload.email === 'string' ? payload.email : undefined;
         const groups = Array.isArray(payload.groups)
             ? payload.groups.filter((g): g is string => typeof g === 'string')

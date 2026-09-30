@@ -26,8 +26,8 @@ const keycloakClient = issuer
 
 const resourceUrl = process.env.MCP_RESOURCE_URL;
 
-// Keycloak client scope whose audience mapper adds KEYCLOAK_AUDIENCE to the token.
-const oauthScope = process.env.MCP_OAUTH_SCOPE ?? 'ggus-mcp';
+// Keycloak client scope whose audience mapper adds KEYCLOAK_AUDIENCE to the token; by convention they share a name.
+const oauthScope = process.env.MCP_OAUTH_SCOPE ?? process.env.KEYCLOAK_AUDIENCE;
 
 // Clients that send no token are pointed here to discover Keycloak and run the OAuth flow.
 const oauthEnabled = !!(issuer && resourceUrl);
@@ -43,9 +43,8 @@ export function protectedResourceMetadata(_req: Request, res: Response): void {
     res.json({
         resource: resourceUrl,
         authorization_servers: [issuer],
-        scopes_supported: [oauthScope],
+        ...(oauthScope && { scopes_supported: [oauthScope] }),
         bearer_methods_supported: ['header'],
-        resource_name: 'GGUS MCP',
     });
 }
 
@@ -81,7 +80,7 @@ function unauthorized(res: Response, error?: 'invalid_token'): void {
         const params = [
             ...(error ? [`error="${error}"`] : []),
             `resource_metadata="${resourceMetadataUrl}"`,
-            `scope="${oauthScope}"`,
+            ...(oauthScope ? [`scope="${oauthScope}"`] : []),
         ];
         res.set('WWW-Authenticate', `Bearer ${params.join(', ')}`);
     } else {

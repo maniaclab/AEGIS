@@ -70,6 +70,12 @@ spec:
                 name: mcp-keys
             - configMapRef:
                 name: keycloak-config
+          env:
+            # Pinned rather than inherited: the chatbot's af-platform-cli tokens already carry it.
+            - name: KEYCLOAK_AUDIENCE
+              value: executor-mcp
+            - name: MCP_RESOURCE_URL
+              value: https://executor.af.atlas-ml.org/mcp
           resources:
             requests:
               memory: "256Mi"
