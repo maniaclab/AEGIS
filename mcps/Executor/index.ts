@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import express, { Request, Response } from 'express';
-import { requireApiKey } from './authMiddleware.js';
+import { protectedResourceMetadata, requireApiKey } from './authMiddleware.js';
+import { log, requestLogger, withToolLog } from './logger.js';
 
 import cors from 'cors';
 
@@ -35,14 +36,12 @@ const COMMAND_TIMEOUT_MS = 120_000;
 
 function sshLogin(host: string, command: string): Promise<{ stdout: string, stderr: string }> {
     const username = "assistant";
-
-    console.log(`SSH login to: ${host}`);
-    console.log(`Command: ${command}`);
+    const started = process.hrtime.bigint();
 
     const sshPromise = new Promise<{ stdout: string, stderr: string }>((resolve, reject) => {
         const conn = new SSHClient();
         conn.on('ready', () => {
-            console.log('SSH Connection established');
+            log.debug(`ssh connected ${username}@${host}`);
             conn.exec(command, (err: any, stream: any) => {
                 if (err) {
                     conn.end();
@@ -50,7 +49,9 @@ function sshLogin(host: string, command: string): Promise<{ stdout: string, stde
                 }
                 let stdout = '';
                 let stderr = '';
-                stream.on('close', () => {
+                stream.on('close', (code: number | null) => {
+                    const ms = (Number(process.hrtime.bigint() - started) / 1e6).toFixed(1);
+                    (code === 0 ? log.info : log.warn)(`ssh exec ${host} exit=${code ?? '?'} ${ms}ms`);
                     conn.end();
                     resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
                 }).on('data', (data: any) => {
@@ -105,11 +106,11 @@ export async function createExecutorMcpServer(): Promise<McpServer> {
                     .describe("The SSH login node to connect to."),
             }
         },
-        async ({ shellCommand, loginNode }) => {
+        async ({ shellCommand, loginNode }) => withToolLog("execute_shell_command", { shellCommand, loginNode }, async () => {
             try {
                 const { stdout, stderr } = await sshLogin(loginNode, shellCommand);
 
-                console.log(`Command executed. Stdout: ${stdout}, Stderr: ${stderr}`);
+                log.debug(`ssh output stdout=${JSON.stringify(stdout)} stderr=${JSON.stringify(stderr)}`);
                 return {
                     content: [
                         {
@@ -123,10 +124,6 @@ export async function createExecutorMcpServer(): Promise<McpServer> {
                     ],
                 };
             } catch (error) {
-                console.error(
-                    `Failed to execute shell command: ${error instanceof Error ? error.message : String(error)
-                    }`
-                );
                 return {
                     content: [
                         {
@@ -134,9 +131,10 @@ export async function createExecutorMcpServer(): Promise<McpServer> {
                             text: `Error: ${error instanceof Error ? error.message : String(error)}`,
                         },
                     ],
+                    isError: true,
                 };
             }
-        }
+        })
     );
 
     return server;
@@ -147,8 +145,13 @@ export async function createExecutorMcpServer(): Promise<McpServer> {
 const app = express();
 app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['WWW-Authenticate'],
 }));
 app.use(express.json());
+app.use(requestLogger);
+
+app.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 
 app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
     const transport = new StreamableHTTPServerTransport({
@@ -164,12 +167,12 @@ app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`MCP Streamable HTTP Server listening on port ${PORT}`);
+    log.info(`Executor MCP Streamable HTTP Server listening on port ${PORT}`);
 });
 
 // Handle server shutdown
 process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
+    log.info('Shutting down server...');
     process.exit(0);
 });
 

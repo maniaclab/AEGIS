@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import express, { Request, Response } from 'express';
-import { requireApiKey } from './authMiddleware.js';
+import { protectedResourceMetadata, requireApiKey } from './authMiddleware.js';
+import { log, logUpstream, requestLogger, withToolLog } from './logger.js';
 
 import cors from 'cors';
 import fs from 'fs';
@@ -56,7 +57,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     .describe("Filter by site state (e.g. 'ACTIVE')."),
             }
         },
-        async ({ name, status, state }) => {
+        async ({ name, status, state }) => withToolLog("list_rc_sites", { name, status, state }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -66,6 +67,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: "Error: X509_USER_PROXY or X509_CERT_DIR environment variables not set",
                     }],
+                    isError: true,
                 };
             }
 
@@ -82,6 +84,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: `Error reading certificate files: ${err}`,
                     }],
+                    isError: true,
                 };
             }
 
@@ -98,6 +101,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
             if (state) params.set('state', state);
             const url = `https://atlas-cric.cern.ch/api/core/rcsite/query/?${params}`;
 
+            const started = process.hrtime.bigint();
             const data = await new Promise<string>((resolve, reject) => {
                 https.get(
                     url,
@@ -105,7 +109,10 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     (res) => {
                         let body = '';
                         res.on('data', (chunk: string) => body += chunk);
-                        res.on('end', () => resolve(body));
+                        res.on('end', () => {
+                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            resolve(body);
+                        });
                     }
                 ).on('error', reject);
             });
@@ -116,7 +123,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     text: data,
                 }],
             };
-        }
+        })
     );
 
     server.registerTool(
@@ -147,7 +154,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     .describe("Filter by queue status value (e.g. 'TEST', 'ONLINE', 'OFFLINE')."),
             }
         },
-        async ({ pandaqueue, state, status }) => {
+        async ({ pandaqueue, state, status }) => withToolLog("list_queue_statuses", { pandaqueue, state, status }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -157,6 +164,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: "Error: X509_USER_PROXY or X509_CERT_DIR environment variables not set",
                     }],
+                    isError: true,
                 };
             }
 
@@ -173,6 +181,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: `Error reading certificate files: ${err}`,
                     }],
+                    isError: true,
                 };
             }
 
@@ -189,6 +198,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
             if (status) params.set('value', status);
             const url = `https://atlas-cric.cern.ch/api/atlas/pandaqueuestatus/query/?${params}`;
 
+            const started = process.hrtime.bigint();
             const data = await new Promise<string>((resolve, reject) => {
                 https.get(
                     url,
@@ -196,7 +206,10 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     (res) => {
                         let body = '';
                         res.on('data', (chunk: string) => body += chunk);
-                        res.on('end', () => resolve(body));
+                        res.on('end', () => {
+                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            resolve(body);
+                        });
                     }
                 ).on('error', reject);
             });
@@ -207,7 +220,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     text: data,
                 }],
             };
-        }
+        })
     );
 
     server.registerTool(
@@ -229,7 +242,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     .describe("Filter by DDM endpoint name (e.g. 'AGLT2_DATADISK')."),
             }
         },
-        async ({ ddmendpoint }) => {
+        async ({ ddmendpoint }) => withToolLog("list_ddm_endpoint_statuses", { ddmendpoint }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -239,6 +252,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: "Error: X509_USER_PROXY or X509_CERT_DIR environment variables not set",
                     }],
+                    isError: true,
                 };
             }
 
@@ -255,6 +269,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: `Error reading certificate files: ${err}`,
                     }],
+                    isError: true,
                 };
             }
 
@@ -269,6 +284,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
             if (ddmendpoint) params.set('ddmendpoint', ddmendpoint);
             const url = `https://atlas-cric.cern.ch/api/atlas/ddmendpointstatus/query/?${params}`;
 
+            const started = process.hrtime.bigint();
             const data = await new Promise<string>((resolve, reject) => {
                 https.get(
                     url,
@@ -276,7 +292,10 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     (res) => {
                         let body = '';
                         res.on('data', (chunk: string) => body += chunk);
-                        res.on('end', () => resolve(body));
+                        res.on('end', () => {
+                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            resolve(body);
+                        });
                     }
                 ).on('error', reject);
             });
@@ -287,7 +306,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     text: data,
                 }],
             };
-        }
+        })
     );
 
     server.registerTool(
@@ -319,7 +338,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     .describe("Filter by queue status (e.g. 'online', 'offline')."),
             }
         },
-        async ({ name, state, status }) => {
+        async ({ name, state, status }) => withToolLog("list_panda_queues", { name, state, status }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -329,6 +348,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: "Error: X509_USER_PROXY or X509_CERT_DIR environment variables not set",
                     }],
+                    isError: true,
                 };
             }
 
@@ -345,6 +365,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: `Error reading certificate files: ${err}`,
                     }],
+                    isError: true,
                 };
             }
 
@@ -361,6 +382,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
             if (status) params.set('status', status);
             const url = `https://atlas-cric.cern.ch/api/atlas/pandaqueue/query/?${params}`;
 
+            const started = process.hrtime.bigint();
             const data = await new Promise<string>((resolve, reject) => {
                 https.get(
                     url,
@@ -368,7 +390,10 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     (res) => {
                         let body = '';
                         res.on('data', (chunk: string) => body += chunk);
-                        res.on('end', () => resolve(body));
+                        res.on('end', () => {
+                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            resolve(body);
+                        });
                     }
                 ).on('error', reject);
             });
@@ -379,7 +404,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     text: data,
                 }],
             };
-        }
+        })
     );
 
     server.registerTool(
@@ -401,7 +426,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     .describe("Filter by PanDA queue name (e.g. 'AGLT2_TEST')."),
             }
         },
-        async ({ panda_queue }) => {
+        async ({ panda_queue }) => withToolLog("list_panda_queue_tags", { panda_queue }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -411,6 +436,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: "Error: X509_USER_PROXY or X509_CERT_DIR environment variables not set",
                     }],
+                    isError: true,
                 };
             }
 
@@ -427,6 +453,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         type: "text" as const,
                         text: `Error reading certificate files: ${err}`,
                     }],
+                    isError: true,
                 };
             }
 
@@ -441,6 +468,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
             if (panda_queue) params.set('panda_queue', panda_queue);
             const url = `https://atlas-cric.cern.ch/api/atlas/pandaqueue/query/?${params}`;
 
+            const started = process.hrtime.bigint();
             const data = await new Promise<string>((resolve, reject) => {
                 https.get(
                     url,
@@ -448,7 +476,10 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     (res) => {
                         let body = '';
                         res.on('data', (chunk: string) => body += chunk);
-                        res.on('end', () => resolve(body));
+                        res.on('end', () => {
+                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            resolve(body);
+                        });
                     }
                 ).on('error', reject);
             });
@@ -459,7 +490,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     text: data,
                 }],
             };
-        }
+        })
     );
 
     return server;
@@ -469,8 +500,13 @@ export async function createCricMcpServer(): Promise<McpServer> {
 const app = express();
 app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['WWW-Authenticate'],
 }));
 app.use(express.json());
+app.use(requestLogger);
+
+app.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 
 app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
     const transport = new StreamableHTTPServerTransport({
@@ -485,10 +521,10 @@ app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-    console.log(`CRIC MCP Streamable HTTP Server listening on port ${PORT}`);
+    log.info(`CRIC MCP Streamable HTTP Server listening on port ${PORT}`);
 });
 
 process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
+    log.info('Shutting down server...');
     process.exit(0);
 });

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import express, { Request, Response } from 'express';
-import { requireApiKey } from './authMiddleware.js';
+import { protectedResourceMetadata, requireApiKey } from './authMiddleware.js';
+import { log, requestLogger, withToolLog } from './logger.js';
 
 import cors from 'cors';
 
@@ -41,7 +42,7 @@ function getAllMarkdownFiles(dir: string): string[] {
             }
         }
     } catch (err) {
-        console.error(`Error reading directory ${dir}:`, err);
+        log.error(`Error reading directory ${dir}: ${err}`);
     }
     return results;
 }
@@ -52,7 +53,7 @@ export async function createKnowledgeMcpServer(): Promise<McpServer> {
     const server = new McpServer(product);
 
     const mdFiles = getAllMarkdownFiles(ADC_DIR);
-    console.log(`Found ${mdFiles.length} Markdown file(s) in ${ADC_DIR}`);
+    log.debug(`Found ${mdFiles.length} Markdown file(s) in ${ADC_DIR}`);
 
     const resourceMap = new Map<string, string>(); // uri -> filePath
 
@@ -91,7 +92,7 @@ export async function createKnowledgeMcpServer(): Promise<McpServer> {
             description: 'Returns a list of all available knowledge resource URIs and their names',
             inputSchema: {},
         },
-        async () => {
+        async () => withToolLog('list_resources', {}, async () => {
             const resources = Array.from(resourceMap.keys()).map(uri => ({
                 uri,
                 name: uri.replace('knowledge://', ''),
@@ -104,7 +105,7 @@ export async function createKnowledgeMcpServer(): Promise<McpServer> {
                     },
                 ],
             };
-        }
+        })
     );
 
     server.registerTool(
@@ -116,7 +117,7 @@ export async function createKnowledgeMcpServer(): Promise<McpServer> {
                 uri: z.string().describe('The knowledge:// URI of the resource to fetch'),
             },
         },
-        async ({ uri }) => {
+        async ({ uri }) => withToolLog('get_resource', { uri }, async () => {
             const filePath = resourceMap.get(uri);
             if (!filePath) {
                 return {
@@ -138,7 +139,7 @@ export async function createKnowledgeMcpServer(): Promise<McpServer> {
                     },
                 ],
             };
-        }
+        })
     );
 
     return server;
@@ -147,8 +148,14 @@ export async function createKnowledgeMcpServer(): Promise<McpServer> {
 
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    exposedHeaders: ['WWW-Authenticate'],
+}));
 app.use(express.json());
+app.use(requestLogger);
+
+app.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 
 app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
     const server = await createKnowledgeMcpServer();
@@ -157,15 +164,13 @@ app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
             sessionIdGenerator: undefined,
         });
         await server.connect(transport);
-        console.log('Received MCP request:', req.body);
         await transport.handleRequest(req, res, req.body);
         res.on('close', () => {
-            console.log('Request closed');
             transport.close();
             server.close();
         });
     } catch (error) {
-        console.error('Error handling MCP request:', error);
+        log.error(`Error handling MCP request: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
         if (!res.headersSent) {
             res.status(500).json({
                 jsonrpc: '2.0',
@@ -180,7 +185,6 @@ app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
 });
 
 app.get('/mcp', requireApiKey, async (req: Request, res: Response) => {
-    console.log('Received GET MCP request');
     res.writeHead(405).end(JSON.stringify({
         jsonrpc: "2.0",
         error: {
@@ -192,7 +196,6 @@ app.get('/mcp', requireApiKey, async (req: Request, res: Response) => {
 });
 
 app.delete('/mcp', requireApiKey, async (req: Request, res: Response) => {
-    console.log('Received DELETE MCP request');
     res.writeHead(405).end(JSON.stringify({
         jsonrpc: "2.0",
         error: {
@@ -207,11 +210,11 @@ app.delete('/mcp', requireApiKey, async (req: Request, res: Response) => {
 // Start the server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Knowledge MCP Server listening on port ${PORT}`);
+    log.info(`Knowledge MCP Server listening on port ${PORT}`);
 });
 
 // Handle server shutdown
 process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
+    log.info('Shutting down server...');
     process.exit(0);
 });

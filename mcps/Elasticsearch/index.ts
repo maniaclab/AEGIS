@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import express, { Request, Response } from 'express';
-import { requireApiKey } from './authMiddleware.js';
+import { protectedResourceMetadata, requireApiKey } from './authMiddleware.js';
+import { log, requestLogger, withToolLog } from './logger.js';
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -147,7 +148,7 @@ export async function createElasticsearchMcpServer(
             const ca = fs.readFileSync(caCert);
             clientOptions.tls = { ca };
         } catch (error) {
-            console.error(
+            log.error(
                 `Failed to read certificate file: ${error instanceof Error ? error.message : String(error)
                 }`
             );
@@ -169,7 +170,7 @@ export async function createElasticsearchMcpServer(
                 .min(1, "Index pattern is required")
                 .describe("Index pattern of Elasticsearch indices to list"),
         },
-        async ({ indexPattern }) => {
+        async ({ indexPattern }) => withToolLog("list_indices", { indexPattern }, async () => {
             try {
                 const response = await esClient.cat.indices({
                     index: indexPattern,
@@ -196,11 +197,8 @@ export async function createElasticsearchMcpServer(
                     ],
                 };
             } catch (error) {
-                console.error(
-                    `Failed to list indices: ${error instanceof Error ? error.message : String(error)
-                    }`
-                );
                 return {
+                    isError: true,
                     content: [
                         {
                             type: "text" as const,
@@ -210,7 +208,7 @@ export async function createElasticsearchMcpServer(
                     ],
                 };
             }
-        }
+        })
     );
 
     // Tool 2: Get mappings for an index
@@ -224,7 +222,7 @@ export async function createElasticsearchMcpServer(
                 .min(1, "Index name is required")
                 .describe("Name of the Elasticsearch index to get mappings for"),
         },
-        async ({ index }) => {
+        async ({ index }) => withToolLog("get_mappings", { index }, async () => {
             try {
                 const mappingResponse = await esClient.indices.getMapping({
                     index,
@@ -243,11 +241,8 @@ export async function createElasticsearchMcpServer(
                     ],
                 };
             } catch (error) {
-                console.error(
-                    `Failed to get mappings: ${error instanceof Error ? error.message : String(error)
-                    }`
-                );
                 return {
+                    isError: true,
                     content: [
                         {
                             type: "text" as const,
@@ -257,7 +252,7 @@ export async function createElasticsearchMcpServer(
                     ],
                 };
             }
-        }
+        })
     );
 
     // Tool 3: Search an index
@@ -289,8 +284,7 @@ export async function createElasticsearchMcpServer(
                     }
                 ),
         },
-        async ({ index, queryBody }) => {
-            console.log(`Searching index: ${index} with query:`, queryBody);
+        async ({ index, queryBody }) => withToolLog("search", { index, queryBody }, async () => {
             try {
                 const searchRequest: estypes.SearchRequest = {
                     index,
@@ -299,11 +293,8 @@ export async function createElasticsearchMcpServer(
                 const result = await esClient.search(searchRequest);
                 return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
             } catch (error) {
-                console.error(
-                    `Search failed: ${error instanceof Error ? error.message : String(error)
-                    }`
-                );
                 return {
+                    isError: true,
                     content: [
                         {
                             type: "text" as const,
@@ -313,7 +304,7 @@ export async function createElasticsearchMcpServer(
                     ],
                 };
             }
-        }
+        })
     );
 
     return server;
@@ -331,6 +322,10 @@ const config: ElasticsearchConfig = {
 
 const app = express();
 app.use(express.json());
+app.use(requestLogger);
+
+app.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 
 app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
     const server = await createElasticsearchMcpServer(config);
@@ -339,15 +334,13 @@ app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
             sessionIdGenerator: undefined,
         });
         await server.connect(transport);
-        console.log('Received MCP request:', req.body);
         await transport.handleRequest(req, res, req.body);
         res.on('close', () => {
-            console.log('Request closed');
             transport.close();
             server.close();
         });
     } catch (error) {
-        console.error('Error handling MCP request:', error);
+        log.error(`Error handling MCP request: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
         if (!res.headersSent) {
             res.status(500).json({
                 jsonrpc: '2.0',
@@ -362,7 +355,6 @@ app.post('/mcp', requireApiKey, async (req: Request, res: Response) => {
 });
 
 app.get('/mcp', requireApiKey, async (req: Request, res: Response) => {
-    console.log('Received GET MCP request');
     res.writeHead(405).end(JSON.stringify({
         jsonrpc: "2.0",
         error: {
@@ -374,7 +366,6 @@ app.get('/mcp', requireApiKey, async (req: Request, res: Response) => {
 });
 
 app.delete('/mcp', requireApiKey, async (req: Request, res: Response) => {
-    console.log('Received DELETE MCP request');
     res.writeHead(405).end(JSON.stringify({
         jsonrpc: "2.0",
         error: {
@@ -389,13 +380,12 @@ app.delete('/mcp', requireApiKey, async (req: Request, res: Response) => {
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`MCP Stateless Streamable HTTP Server listening on port ${PORT}`);
-    // console.debug("Elasticsearch:", config);
+    log.info(`Elasticsearch MCP Streamable HTTP Server listening on port ${PORT}`);
 });
 
 // Handle server shutdown
 process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
+    log.info('Shutting down server...');
     process.exit(0);
 });
 
