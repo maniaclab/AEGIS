@@ -53,8 +53,11 @@ Leave the client secret empty, then `/mcp` → **owl** → **Authenticate**.
 
 ### ChatGPT
 
-With Developer mode on, create an app with server URL `https://owl.af.atlas-ml.org/mcp`,
-authentication **OAuth**, client ID `af-mcp`, secret empty.
+With Developer mode on, create a **New Plugin** with server URL
+`https://owl.af.atlas-ml.org/mcp` and authentication **OAuth**. Under **Advanced OAuth settings**:
+registration method **User-Defined OAuth Client**, client ID `af-mcp`, secret empty, token
+endpoint auth method **`none`**, scope `owl-mcp`. Details in the
+[connection guide](../README.md#chatgpt-web-and-desktop-app).
 
 ### VS Code
 
@@ -160,9 +163,11 @@ llm/              provider abstraction (planned)
 pipeline/         parse, extract, novelty, contradict, commit (planned)
 ```
 
-**Entity backbone from CRIC.** Sites, services and endpoints resolve against CRIC rather
-than a namespace we invent, which gives free disambiguation and a join path into live
-operational state.
+**CRIC as an entity anchor.** Where an entity is registered in CRIC (sites, PanDA queues,
+DDM endpoints, …) OWL uses its CRIC identity, which gives free disambiguation and a join
+path into live operational state. Much of the distributed system is not in CRIC (pilot
+factories, Harvester, PanDA and Rucio internals, monitoring pipelines, facility services,
+procedures, people), so OWL keeps its own entity namespace for everything else.
 
 **Split model providers.** The high-volume path — extraction, novelty, pairwise triage —
 runs on the local vLLM on the DGX Sparks (`nano-30b`), which are routable from AF pods.
