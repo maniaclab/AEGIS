@@ -6,9 +6,10 @@ on:
     branches:
       - "main"
     paths-ignore:
-      - "sparks/**"
+      - "on_prem/**"
       - "deploy/**"
       - "claw_at_cern/**"
+      - "agents-export/**"
 
 jobs:
   build-and-push-mcp:
