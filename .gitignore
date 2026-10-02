@@ -3,6 +3,11 @@ sparks/webui/data/cache
 .env.local
 .claude
 
+_pycache_/
+
+.pyc
+*.pyo
+*.pyd
 node_modules/
 .vscode
 secrets

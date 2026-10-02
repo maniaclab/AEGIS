@@ -100,7 +100,12 @@ app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceMetadata);
 // /mcp is the canonical endpoint; /site/atlas stays for clients set up against rucio-mcp directly.
 app.all(['/mcp', '/site/atlas', '/site/atlas/'], acceptSharedSecret, forward);
 
-app.listen(PORT, () => {
+// Express 5 hands listen errors (e.g. port taken) to this callback instead of throwing.
+app.listen(PORT, (err?: Error) => {
+    if (err) {
+        log.error(`cannot listen on port ${PORT}: ${err.message}`);
+        process.exit(1);
+    }
     log.info(`Rucio MCP auth proxy listening on port ${PORT}, forwarding to ${upstream.href}`);
 });
 
