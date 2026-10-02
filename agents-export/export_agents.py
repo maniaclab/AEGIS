@@ -50,6 +50,9 @@ SECRET_KEY = re.compile(
     r"(token|secret|password|passphrase|api[-_]?key|authorization|cookie|credential|private[-_]?key)",
     re.I,
 )
+CRON_RUNTIME_KEYS = {
+    "state", "status", "createdAtMs", "updatedAtMs", "configRevision", "deliverySuppressionReason",
+}
 PLACEHOLDER = re.compile(r"(Bearer\s+)?\$\{[A-Za-z0-9_]+\}")
 SECRET_VALUE = {
     "anthropic-key": re.compile(r"sk-ant-[A-Za-z0-9_-]{20,}"),
@@ -132,7 +135,9 @@ def export_cron(openclaw_bin, agents_dir):
     jobs = data.get("jobs", data) if isinstance(data, dict) else data
     by_agent = {}
     for job in jobs:
-        job = {k: v for k, v in job.items() if k not in ("state", "createdAtMs", "updatedAtMs")}
+        # Drop run state (lastRunAtMs, nextRunAtMs, status, …) so the diff only shows real job changes.
+        job = {k: v for k, v in job.items()
+               if k not in CRON_RUNTIME_KEYS and not k.startswith(("last", "next"))}
         by_agent.setdefault(job.get("agentId") or "_global", []).append(redact(job))
     for agent_id, agent_jobs in by_agent.items():
         agent_jobs.sort(key=lambda j: (j.get("name") or "", j.get("id") or ""))
