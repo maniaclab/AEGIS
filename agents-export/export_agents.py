@@ -173,21 +173,25 @@ def publish(repo, paths):
         return
     git(repo, "commit", "-m", "export: OpenClaw agent state")
     git(repo, "push", "--force", "origin", "export")
-    if not shutil.which("gh"):
-        print("pushed branch 'export'; open a PR against main to review it")
+    no_pr = "pushed branch 'export'; open a PR against main to review it"
+    if not shutil.which("gh") or subprocess.run(
+            ["gh", "auth", "status"], cwd=repo, capture_output=True).returncode != 0:
+        print(no_pr + " (gh missing or not logged in)")
         return
     existing = subprocess.run(
         ["gh", "pr", "list", "--head", "export", "--state", "open", "--json", "number", "--jq", "length"],
         cwd=repo, capture_output=True, text=True,
     ).stdout.strip()
     if existing in ("", "0"):
-        subprocess.run(
+        res = subprocess.run(
             ["gh", "pr", "create", "--base", "main", "--head", "export",
              "--title", "OpenClaw agent state export",
              "--body", "Automated export of OpenClaw agent definitions and curated memory. "
                        "Review what the agents learned, then merge."],
-            cwd=repo, check=True,
+            cwd=repo,
         )
+        if res.returncode != 0:
+            print(no_pr + " (gh pr create failed)", file=sys.stderr)
     else:
         print("updated the open export PR")
 
