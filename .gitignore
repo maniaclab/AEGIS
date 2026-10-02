@@ -3,8 +3,7 @@ sparks/webui/data/cache
 .env.local
 .claude
 
-_pycache_/
-
+__pycache__/
 .pyc
 *.pyo
 *.pyd
