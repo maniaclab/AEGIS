@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily OpenClaw agent export
+
+[Timer]
+OnCalendar=*-*-* 17:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target
