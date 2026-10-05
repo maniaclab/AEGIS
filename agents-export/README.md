@@ -15,8 +15,12 @@ The agent list comes from `agents.entries` in `openclaw.json`. Per agent, under
 | `agent.json` | The agent's config entry (model, tools, subagents), with secrets redacted |
 | `cron.json` | Its cron jobs and heartbeats from `openclaw cron list --all --json`, without run state |
 | `workspace/` | `*.md` (`AGENTS.md`, `SOUL.md`, `IDENTITY.md`, `USER.md`, `MEMORY.md`, …), `memory/*.md`, `.learnings/`, `skills/`, small scripts and JSON |
+| `workshop-skills/` | Skills the agent wrote itself and that were applied through skill-workshop, from `<agentDir>/workshop-skills` (nothing else from `agentDir`, which holds auth profiles) |
 
-Shared across agents, under `shared/`: `agent-defaults.json`, `mcp.json` and `skills/`.
+Shared across agents, under `shared/`: `agent-defaults.json`, `mcp.json`, `skills/` (from
+`~/.openclaw/skills`) and `skill-proposals/` (every skill-workshop `PROPOSAL.md`, applied or
+pending; omitted with `--public`). Plugin-bundled skills (`~/.openclaw/plugin-skills`) are not
+exported, since reinstalling the plugin restores them.
 
 Never exported: dreaming output (`DREAMS.md`, `memory/dreaming/`, `memory/.dreams/`, unless
 `--include-dreams`), `media/`, images, databases, `.env` and key files, and anything over 1 MB.

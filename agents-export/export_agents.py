@@ -234,6 +234,12 @@ def main():
         ws = Path(entry.get("workspace") or defaults.get("workspace", ""))
         dest = agents_dir / agent_id
         write_json(dest / "agent.json", redact(entry))
+        # Skills the agent wrote itself via skill-workshop live in its agentDir, not the workspace.
+        # Only this subdirectory is copied: agentDir also holds auth profiles.
+        agent_dir = Path(entry.get("agentDir") or home / "agents" / agent_id / "agent")
+        if (agent_dir / "workshop-skills").is_dir():
+            shutil.copytree(agent_dir / "workshop-skills", dest / "workshop-skills",
+                            ignore=shutil.ignore_patterns(".*", "node_modules"))
         if not ws.is_dir():
             print(f"{agent_id}: workspace {ws} not found", file=sys.stderr)
             continue
@@ -246,6 +252,14 @@ def main():
     if (home / "skills").is_dir():
         shutil.copytree(home / "skills", shared_dir / "skills",
                         ignore=shutil.ignore_patterns(".clawhub", ".git", "node_modules"))
+    # Skill-workshop drafts (applied or still pending review); applied ones are also in
+    # agents/<id>/workshop-skills.
+    proposals = home / "skill-workshop" / "proposals"
+    if proposals.is_dir() and not args.public:
+        for src in sorted(proposals.rglob("PROPOSAL.md")):
+            out = shared_dir / "skill-proposals" / src.relative_to(proposals)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, out)
     export_cron(args.openclaw_bin, agents_dir)
 
     hits = scan_for_secrets(agents_dir) + (scan_for_secrets(shared_dir) if not args.subdir else [])
