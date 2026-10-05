@@ -45,7 +45,7 @@ metadata:
   name: mcp-server-elasticsearch
   namespace: aegis
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: mcp-server-elasticsearch
@@ -84,13 +84,13 @@ spec:
               memory: "512Mi"
               cpu: "500m"
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: mcp-server-elasticsearch
-  namespace: aegis
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: mcp-server-elasticsearch
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: mcp-server-elasticsearch
+#   namespace: aegis
+# spec:
+#   minAvailable: 1
+#   selector:
+#     matchLabels:
+#       app: mcp-server-elasticsearch

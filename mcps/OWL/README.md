@@ -143,7 +143,7 @@ a second consistency domain for no gain at our scale. Graph traversal is a recur
 over `claim_edges`; vector search is pgvector/HNSW; lexical search is Postgres full-text
 search (Elasticsearch BM25 stays an option if FTS proves too weak).
 
-**Two processes, one image.** `owl-mcp` (2 replicas, stateless) serves MCP over HTTP.
+**Two processes, one image.** `owl-mcp` (stateless, 1 replica today, can scale out) serves MCP over HTTP.
 `owl-worker` (1 replica) drains the job queue and runs scheduled sweeps. Both are built
 from the same TypeScript codebase; the entrypoint script selects the mode.
 
@@ -296,7 +296,7 @@ Runs in the `aegis` namespace alongside the other MCPs.
 | Resource | Name |
 | --- | --- |
 | Ingress | `owl.af.atlas-ml.org` (cert-manager, nginx) |
-| Deployment | `mcp-server-owl` — 2 replicas |
+| Deployment | `mcp-server-owl` — 1 replica |
 | Deployment | `owl-worker` — 1 replica |
 | StatefulSet | `owl-postgres` — pgvector, PVC-backed, 50Gi |
 | ConfigMap | `owl-config` — models, trusted writers, log level |

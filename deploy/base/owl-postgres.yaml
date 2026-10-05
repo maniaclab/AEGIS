@@ -106,7 +106,10 @@ spec:
         name: data
       spec:
         accessModes: ["ReadWriteOnce"]
-        # storageClassName: <cluster default is used if unset>
+        # Block storage: Postgres wants a local filesystem, not a shared one (CephFS).
+        # volumeClaimTemplates are immutable — changing this means deleting the
+        # StatefulSet and its PVC.
+        storageClassName: rook-ceph-block
         resources:
           requests:
             storage: 50Gi

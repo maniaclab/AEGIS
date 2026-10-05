@@ -68,9 +68,10 @@ cluster, from CI. Get the whole pipe working before there is anything interestin
 * [x] `deploy/base/owl-config.yaml` — non-secret config as a ConfigMap (models, trusted
       writers, log level). Was not in the original plan; the alternative was baking model
       names into the Deployment.
-* [x] `deploy/mcps/owl_mcp.yaml` — Service, Ingress, `mcp-server-owl` (2 replicas, probes,
-      PDB) and `owl-worker` (1 replica, `Recreate` so migrations and sweeps never have two
-      owners). Both carry `role: mcp-server`, so the existing network policy covers them.
+* [x] `deploy/mcps/owl_mcp.yaml` — Service, Ingress, `mcp-server-owl` (probes; started
+      as 2 replicas with a PDB, now 1 replica and no PDB like the other MCPs) and
+      `owl-worker` (1 replica, `Recreate` so migrations and sweeps never have two owners).
+      Both carry `role: mcp-server`, so the existing network policy covers them.
 * [x] RBAC — ServiceAccounts `mcp-server-owl`, `owl-worker`, `owl-postgres`, each with
       `get` on only what it consumes. Only the worker gets `owl-mattermost`: nothing that
       answers HTTP should be able to post to the collaboration's channel.
@@ -96,22 +97,25 @@ the `DATABASE_URL` and `OWL_MODE` guards.
 
 ### Needs you before this is live
 
-* [ ] S3 endpoint, bucket and credentials → fill and seal `secrets/owl-s3-secret.yaml`.
-* [ ] Mattermost channel webhook → fill and seal `secrets/owl-mattermost-secret.yaml`.
-* [ ] Pick the Postgres password → fill and seal `secrets/owl-db-secret.yaml`. Keep the
-      `POSTGRES_*` values and the credentials inside `DATABASE_URL` in agreement; nothing
-      validates that, and a mismatch surfaces only as an auth failure at worker startup.
-* [ ] Uncomment the three sealed-secret entries in `deploy/base/kustomization.yaml`.
+* [x] S3 endpoint, bucket and credentials, sealed as `owl-s3`.
+* [x] Mattermost channel webhook, sealed as `owl-mattermost`.
+* [x] Postgres password, sealed as `owl-db`. All three live in
+      `deploy/base/owl-secrets-sealed.yaml`.
+* [x] Sealed secrets registered in `deploy/base/kustomization.yaml`.
 * [ ] Replace `OWL_CHEAP_BASE_URL: http://CHANGEME-spark1:8000/v1` in
       `deploy/base/owl-config.yaml` with the Spark's address as reachable from
-      `af-platform` pods.
-* [ ] Create the `owl.af.atlas-ml.org` DNS record.
-* [ ] Confirm the cluster's storage class for the PVC, or leave it on the default.
-* [ ] A Keycloak client for `owl-mcp` (the audience the manifests expect), and your `sub`
-      or username in `OWL_TRUSTED_WRITERS` if `ivukotic` is not what the token carries.
-* [ ] Mirror the manifests into `maniaclab/flux_app` (`/af/af-platform`).
-* [ ] Verify in the cluster: `curl -X POST https://owl.af.atlas-ml.org/mcp
-      -H 'Authorization: Bearer ...' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
+      `aegis` pods. The worker logs `ERROR cheap model endpoint ... unreachable` until then.
+* [x] `owl.af.atlas-ml.org` DNS record and ingress.
+* [x] Storage class: `rook-ceph-block` (RBD), set explicitly. The first PVC landed on the
+      cluster default, `reanadev-shared-volume-storage-class` (CephFS), and was recreated
+      while the database was still empty.
+* [x] Keycloak client scope `owl-mcp`; `ivukotic` resolves as a trusted writer.
+* [x] Deployed in `aegis`: `mcp-server-owl`, `owl-worker`, `owl-postgres-0`.
+* [x] Verified 2026-10-05: `owl_status` over OAuth answers with the database reachable
+      and the caller identified as a trusted person.
+* [ ] Worker heartbeat logged `database unreachable: Connection terminated due to
+      connection timeout` on 2026-09-30 and 2026-10-01. Check whether the pool drops idle
+      connections before Phase 1 makes the worker do real work.
 
 ## Phase 1 — the store and the read path
 

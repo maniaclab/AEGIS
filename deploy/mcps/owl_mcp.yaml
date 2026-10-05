@@ -1,7 +1,7 @@
 # OWL — the ATLAS AI Librarian.
 #
 # Two Deployments from one image, selected by OWL_MODE:
-#   mcp-server-owl  — stateless MCP/HTTP front end, 2 replicas
+#   mcp-server-owl  — stateless MCP/HTTP front end, 1 replica (can scale out)
 #   owl-worker      — single replica: owns migrations, the ingest queue and the
 #                     scheduled sweeps. Two of these would duplicate every sweep.
 #
@@ -54,7 +54,7 @@ metadata:
   name: mcp-server-owl
   namespace: aegis
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: mcp-server-owl
@@ -161,13 +161,13 @@ spec:
               memory: "2Gi"
               cpu: "2"
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: mcp-server-owl
-  namespace: aegis
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: mcp-server-owl
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: mcp-server-owl
+#   namespace: aegis
+# spec:
+#   minAvailable: 1
+#   selector:
+#     matchLabels:
+#       app: mcp-server-owl
