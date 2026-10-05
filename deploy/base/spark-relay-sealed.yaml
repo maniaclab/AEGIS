@@ -1,0 +1,15 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: spark-relay-authkey
+  namespace: aegis
+spec:
+  encryptedData:
+    TS_AUTHKEY: AgDcvxveB29Tr3A4uT+gtzzzy12WTdDW1+qEqoXpI2ZOiPXD5SMBp40xfN8IPFXE9I0ewDeV2zPRbcikHzBEz1dJp5lYDjbR/1stfmv42Tr90uFL6DfTuEIkyDTsQDoANsuGQKS72d6rud3e6CAFbkEGyagLYI5AslfxYjF92TkQsGCH8KYW6VHJpo3osbah/VQSAcCRdNNcGLtugbbQTalyms1gNOLqMk8nGQuK6Pa7vPXo/V3GoUPbzpTQom9t3XEoUFLvvj0K5YOVX6lNFI4fbafAMH8qZSyHgZW/wsVOIEJCQxnvaCUwMF0JkonSDzR/qthavcVRanVTTn4mHmywQi/mF95RsEl/JJyIauOIEzuq4zvZmLzffdHTkf0Q3vFRhu4gTDEPAg1IpL7jkfifkyietW+zyMEPuD7dfNlkOoP2R/SKUwVN+ncX15UsrytRbbvft9Nlg6BTgdxxZzg+xeXYM6pvTzYR8AT9cJkSFUThm91ODSmEMoYIW1u+TttggE2kUp2gQbFaeljB05ue0mxOEIG3fWrMRXfnEphsAE68Q4uDgTpaQzRECXpCxL3u6gbzvV5Nq53Ry25ifBpxzqEVtBbcWbDTDdt98KInEeN9ziNOPmlPm4/HlyYG/hrTBbQ9LrrlczMFyFbSRDyAS5EhDQvL/8uIAYkmJzAEPG8nDAwXGUrqAH7N7MgRRVDG/+6yz3A2Eqaqo3FsECEmDusybILfY4qqpXKR8I5p6ALzg59yGGqu+UIL4Kmg+ckDu39VTuWHLml/CgK7
+  template:
+    metadata:
+      creationTimestamp: null
+      name: spark-relay-authkey
+      namespace: aegis

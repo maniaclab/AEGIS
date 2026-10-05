@@ -102,9 +102,13 @@ the `DATABASE_URL` and `OWL_MODE` guards.
 * [x] Postgres password, sealed as `owl-db`. All three live in
       `deploy/base/owl-secrets-sealed.yaml`.
 * [x] Sealed secrets registered in `deploy/base/kustomization.yaml`.
-* [ ] Replace `OWL_CHEAP_BASE_URL: http://CHANGEME-spark1:8000/v1` in
-      `deploy/base/owl-config.yaml` with the Spark's address as reachable from
-      `aegis` pods. The worker logs `ERROR cheap model endpoint ... unreachable` until then.
+* [x] Reach the vLLM on Spark 1. The campus network drops traffic from the AF cluster
+      (`192.170.240.0/23`) to `dgx-spark1` before it reaches the host (tcpdump on spark1
+      sees nothing), so OWL goes over the tailnet instead: `deploy/base/spark-relay.yaml`
+      (tailscale in userspace mode + socat) and `OWL_CHEAP_BASE_URL: http://spark-relay:8000/v1`.
+* [ ] After the relay's first login, check the worker's startup log has no
+      `cheap model endpoint` error, and revoke the auth key in the Tailscale console
+      (`TS_AUTH_ONCE` means it is not needed again while `spark-relay-tsstate` exists).
 * [x] `owl.af.atlas-ml.org` DNS record and ingress.
 * [x] Storage class: `rook-ceph-block` (RBD), set explicitly. The first PVC landed on the
       cluster default, `reanadev-shared-volume-storage-class` (CephFS), and was recreated

@@ -13,6 +13,7 @@ resources:
   - rucio-mcp-token-sealed.yaml
   - ggus-token-sealed.yaml
   - owl-secrets-sealed.yaml
+  - spark-relay-sealed.yaml
 
   # x509 proxy renewal
   - x509.yaml
@@ -27,3 +28,6 @@ resources:
 
   # owl system of record (postgres + pgvector)
   - owl-postgres.yaml
+
+  # tailnet relay to the vLLM on DGX Spark 1
+  - spark-relay.yaml

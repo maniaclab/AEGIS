@@ -16,9 +16,10 @@ data:
 
   # ── models ─────────────────────────────────────────────────────────────────
   # Cheap, high-volume path — extraction, novelty, pairwise triage — on the local vLLM
-  # running on the DGX Sparks. TODO: replace with the Spark's actual address as reachable
-  # from aegis pods.
-  OWL_CHEAP_BASE_URL: "http://CHANGEME-spark1:8000/v1"
+  # running on DGX Spark 1, reached over the tailnet through spark-relay.yaml (the campus
+  # network drops cluster traffic to the Sparks). The worker logs an ERROR at startup if
+  # it cannot reach it.
+  OWL_CHEAP_BASE_URL: "http://spark-relay:8000/v1"
   OWL_MODEL_CHEAP: "nano-30b"
 
   # Rare path — adjudication of scope qualifications and true conflicts.
