@@ -17,7 +17,7 @@ miserable.
 ## Decisions — settled 2026-09-17
 
 1. **Postgres hosting** — plain `StatefulSet` with `pgvector/pgvector:pg17` and a PVC,
-   in `af-platform`. No operator dependency.
+   in `af-platform` (now `aegis`). No operator dependency.
 2. **Models** — the Sparks *are* routable from AF pods, so the split is:
    cheap/high-volume path (extraction, novelty, pair triage) on local vLLM
    (`nano-30b` on Spark 1); adjudication on a hosted strong model via the existing
