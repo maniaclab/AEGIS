@@ -59,6 +59,7 @@ export const config = {
     },
 
     embedding: {
+        baseUrl: process.env.OWL_EMBEDDING_BASE_URL ?? 'https://api.openai.com/v1',
         model: process.env.OWL_EMBEDDING_MODEL ?? 'text-embedding-3-large',
         /**
          * Baked into the `vector(N)` column type. Changing it needs `npm run reembed`,

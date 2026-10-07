@@ -6,13 +6,15 @@
  * scheduled sweeps (TTL re-verification, dispute escalation, weekly digests). Running two
  * of these would duplicate every sweep, so the deployment pins it to one.
  *
- * Phase 0 does none of that work yet. What it does do is verify at startup that everything
- * the pipeline will depend on is actually reachable, because a silent failure here — an
- * unreachable Spark, say — would later stall the whole ingest queue with no obvious cause.
+ * Phase 1 does the migrations; the queue and sweeps arrive with Phases 2-3. It also
+ * verifies at startup that everything the pipeline will depend on is actually reachable,
+ * because a silent failure here — an unreachable Spark, say — would later stall the whole
+ * ingest queue with no obvious cause.
  */
 import { config } from './config.js';
 import { log, logUpstream } from './logger.js';
 import { closePool, dbStatus } from './db/pool.js';
+import { migrate } from './db/migrate.js';
 
 // @ts-expect-error ignore `with` keyword
 import pkg from './package.json' with { type: 'json' }
@@ -57,7 +59,14 @@ async function main(): Promise<void> {
         log.error(`database unreachable: ${db.error}`);
         process.exit(1);
     }
-    log.info(`database ok: ${db.version}, claims=${db.claims ?? '(schema not migrated)'}`);
+    log.info(`database ok: ${db.version}`);
+
+    const applied = await migrate();
+    const after = await dbStatus();
+    log.info(
+        `schema ${after.schema_version} (${applied.length ? `applied ${applied.join(', ')}` : 'up to date'}), ` +
+        `claims=${after.claims}`,
+    );
 
     await checkCheapModel();
 
@@ -65,8 +74,8 @@ async function main(): Promise<void> {
         log.warn('OPENAI_API_KEY is not set — adjudication and embeddings will fail');
     }
 
-    // Phase 1 runs migrations here, Phase 2 starts the queue drain, Phase 3+ the sweeps.
-    log.info('no work to do yet (Phase 0) — idling');
+    // Phase 2 starts the queue drain here, Phase 3+ the sweeps.
+    log.info('no queue work yet (Phase 1) — idling');
 
     const heartbeat = setInterval(() => {
         void dbStatus().then((s) =>

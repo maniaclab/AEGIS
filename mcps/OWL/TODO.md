@@ -126,53 +126,64 @@ the `DATABASE_URL` and `OWL_MODE` guards.
       unreachable or timeout lines in 46 h of the current worker, so it was the old
       CephFS-backed database before the PVC was recreated on `rook-ceph-block`.
 
-## Phase 1 — the store and the read path
+## Phase 1 — the store and the read path ✅ (locally; deploy pending)
 
 Goal: claims can be inserted by hand (SQL or a seed script) and retrieved well through MCP.
 No LLM in the loop yet — this phase is about getting retrieval and the schema right while
 they are still cheap to change.
 
-* [ ] Migrations with `node-pg-migrate`, run by the worker at startup under a Postgres
-      advisory lock (single writer, no separate Job to keep in sync).
-* [ ] Schema:
-      - `documents` — content hash (PK), uri, title, source_kind, fetched_at,
-        parser_version, blob_ref
-      - `claims` — id, text, canonical_text, subject_entity_id, predicate,
-        `valid_from`/`valid_to`, `asserted_at`/`retracted_at`,
-        status (`active|quarantined|disputed|superseded|retired`), confidence, ttl_days,
-        owner_identity, classification, embedding `vector(N)`, tsv `tsvector`
-      - `claim_provenance` — claim_id, document_id, span_start, span_end,
-        extractor_version, submitted_by (many-to-many: the same claim attested by several
-        sources is a confidence signal)
-      - `claim_edges` — from_claim, to_claim, type
-        (`supersedes|contradicts|refines|qualifies|resolves`), created_by, created_at
-      - `entities` + `entity_aliases` — with a `cric_ref` column for the CRIC backbone
-      - `disputes` — claim_a, claim_b, kind, state, opened_at, parties, escalated_at,
-        resolution_claim_id
-      - `jobs` — idempotency key `content_hash + prompt_version + model_version`, state,
-        attempts, payload, result
-      - `audit_log` — append-only, every write with identity and token id
-      - `query_log` — for ranking disputes by real query traffic later
-* [ ] Indexes: HNSW on `embedding`, GIN on `tsv`, btree on
-      `(subject_entity_id, status, valid_to)`.
-* [ ] Hybrid search query: vector + FTS with reciprocal-rank fusion, filtered by entity,
-      status and time window. This is the single most important query in the system —
-      worth unit tests against a fixture corpus.
-* [ ] Recursive CTE for `traverse_entity` and for supersession chains.
-* [ ] Read tools: `search_knowledge`, `get_claim`, `traverse_entity`, `get_timeline`,
-      `list_disputes`, `fetch_source`.
-* [ ] Output shaping: every returned claim carries provenance, status, age, and an
-      explicit staleness/dispute flag. Never let a disputed claim come back looking settled.
-* [ ] Seed script: a few dozen hand-written claims about a system we know well (Rucio
-      subscriptions, or the AF login flow) to exercise retrieval.
-      Seed data drafted 2026-10-07 from real agent memory instead: 43 claims and 20
-      entities in `owl/seed-claims.yaml` in the private `maniaclab/aegis-agents` (never
-      here). Each claim carries a verbatim `quote` of its source at a pinned export commit,
-      and the loader turns it into a char-offset provenance span. Still needed: the loader.
-* [ ] Eval harness skeleton — `eval/` with a runner, scoring retrieval recall and answer
-      correctness *separately*, wired to `npm run eval` even though the gold set is tiny.
-      Gold set: 22 questions in `owl/eval-gold.yaml` (aegis-agents), including one
-      `must_flag` cases (GGUS states s18→s19, Varnish version s32→s44).
+* [x] Migrations, run by the worker at startup under a Postgres advisory lock (single
+      writer, no separate Job to keep in sync). A small runner in `db/migrate.ts` over
+      numbered SQL files in `db/migrations/` instead of `node-pg-migrate`: one dependency
+      fewer, and plain SQL is what the schema is written in anyway. Each migration is
+      checksummed, and an applied file that has since changed is a startup error.
+* [x] Schema (`db/migrations/001_init.sql`) — `documents`, `claims`, `claim_provenance`,
+      `claim_edges`, `entities` + `entity_aliases`, `disputes`, `jobs`, `audit_log`,
+      `query_log`, as planned. Differences from the plan:
+      - embedding is `halfvec(3072)`, not `vector(3072)`: pgvector's HNSW index stops at
+        2000 dimensions for `vector` (4000 for `halfvec`). The worker refuses to start if
+        `OWL_EMBEDDING_DIMENSIONS` disagrees with the column.
+      - `claims.external_id` — a stable handle from outside (`seed:s01`), so seeds re-load
+        in place and the gold set can name claims.
+      - `claim_provenance.span_text` and `asserted_by` — the cited text itself (citations
+        are on the hot read path, originals are in the blob store) and the person the
+        source attributes the claim to, as distinct from who submitted it.
+      - span offsets are Unicode code points, matching Postgres `substring()`.
+      - `audit_log` refuses UPDATE, DELETE and TRUNCATE by trigger.
+      - `tsv` is a generated column.
+* [x] Indexes: HNSW on `embedding`, GIN on `tsv`, btree on
+      `(subject_entity_id, status, valid_to)`, trigram on aliases.
+* [x] Hybrid search (`db/search.ts`): RRF over three legs — vector, full-text with the
+      query's lexemes OR'd (AND semantics returns nothing for natural questions), and
+      claims whose subject entity is named in the query (weighted ½). Filters apply inside
+      each leg. Each leg is optional: without an embedding key, search runs lexical+entity.
+* [x] Recursive CTEs for `traverse_entity` (edge walk, any direction, n hops) and for
+      supersession chains (ordered by graph position, not dates).
+* [x] Read tools (`tools/read.ts`): `search_knowledge`, `get_claim`, `traverse_entity`,
+      `get_timeline`, `list_disputes`, `fetch_source`. Every read is written to
+      `query_log`. `fetch_source` serves the cited spans only until the blob store exists.
+* [x] Output shaping (`db/claims.ts`): every claim carries citations, status, age and
+      `flags` + human-readable `warnings` — superseded, disputed, unconfirmed, retired,
+      expired, not_yet_valid, stale (TTL since last attestation).
+* [x] Seed loader: `npm run seed -- --repo <aegis-agents>`. Reads
+      `owl/seed-claims.yaml` (43 claims, 20 entities, from real agent memory, private) and
+      each source with `git show <commit>:<path>`; a quote that is missing or not unique
+      aborts the load. Idempotent (`seed:<id>`), re-embeds only changed text, retires seed
+      claims removed from the file, and turns `expect_edge` into edges unless
+      `--no-edges`.
+* [x] Eval harness: `npm run eval -- --repo <aegis-agents>` over `owl/eval-gold.yaml`
+      (22 questions). Scores retrieval (recall@k, hit@k, MRR) and the `must_flag` check;
+      answer correctness is reported as skipped until there is an answer composer
+      (`compose_brief`, Phase 5). Exits non-zero below `--min-recall` or on any flag
+      failure. First run, 2026-10-07: recall@5 0.985, hit@5 1.0, MRR 0.911, no flag
+      failures (lexical+entity alone: MRR 0.888). With `--no-edges` it correctly fails
+      s18. The eval is the fixture-corpus test for hybrid search; a corpus of 43 claims
+      flatters any ranker, so treat these numbers as a smoke test.
+* [ ] Deploy: merge, let the worker migrate the cluster database, then seed it from a
+      laptop through `kubectl port-forward svc/owl-postgres 5432` with the cluster
+      `DATABASE_URL`. Check `owl_status` reports `claims: 43`.
+* [ ] Eval in CI. The gold set is private, so CI needs read access to aegis-agents (a
+      deploy key) and a throwaway pgvector service container.
 
 ## Phase 2 — ingest pipeline
 

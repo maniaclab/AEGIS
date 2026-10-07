@@ -17,8 +17,10 @@ pool.on('error', (err) => {
 export interface DbStatus {
     reachable: boolean;
     version?: string;
-    /** Null until the Phase 1 migrations exist. */
+    /** Null until the migrations have run. */
     claims?: number | null;
+    /** Latest applied migration, or null before the first. */
+    schema_version?: string | null;
     error?: string;
 }
 
@@ -26,7 +28,7 @@ export interface DbStatus {
  * Cheap reachability probe used by `/healthz` and the `owl_status` tool.
  *
  * The claim count is reported as null rather than an error when the schema has not been
- * migrated yet — during Phase 0 that is the expected state, not a fault.
+ * migrated yet — before the worker's first start that is the expected state, not a fault.
  */
 export async function dbStatus(): Promise<DbStatus> {
     try {
@@ -42,7 +44,16 @@ export async function dbStatus(): Promise<DbStatus> {
             claims = Number(counted.rows[0].n);
         }
 
-        return { reachable: true, version, claims };
+        let schema_version: string | null = null;
+        const migrated = await pool.query<{ exists: boolean }>(
+            "SELECT to_regclass('public.schema_migrations') IS NOT NULL AS exists",
+        );
+        if (migrated.rows[0]?.exists) {
+            const latest = await pool.query<{ v: string | null }>('SELECT max(version) AS v FROM schema_migrations');
+            schema_version = latest.rows[0].v;
+        }
+
+        return { reachable: true, version, claims, schema_version };
     } catch (err) {
         return { reachable: false, error: err instanceof Error ? err.message : String(err) };
     }

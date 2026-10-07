@@ -30,6 +30,9 @@
     "watch": "tsc --watch",
     "start": "node dist/index.js",
     "worker": "node dist/worker.js",
+    "migrate": "node -e \"import('./dist/db/migrate.js').then(async (m) => { console.log(await m.migrate()); (await import('./dist/db/pool.js')).closePool(); })\"",
+    "seed": "node dist/db/seed.js",
+    "eval": "node dist/eval/run.js",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
     "test": "npm run build"
   },
@@ -42,6 +45,7 @@
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.0.1",
     "pg": "^8.16.3",
+    "yaml": "^2.9.1",
     "zod": "^3.24.4"
   },
   "engines": {

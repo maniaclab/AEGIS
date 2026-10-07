@@ -17,13 +17,14 @@ Design rationale and the conversation it came from: [AGENT.md](AGENT.md).
 
 ## Status
 
-**Phase 0 complete** — the service, its container, its database and its manifests exist and
-run; there is no knowledge in it yet. `owl_status` is the only tool. Everything else below
-describes the target system, and the build order is in [TODO.md](TODO.md).
+**Phase 1 — the store and the read path.** The schema exists and the worker migrates it at
+startup; claims are loaded by a seed script, and the six read tools answer over MCP with
+hybrid search and citations. Nothing writes through MCP yet: the write tools and the ingest
+pipeline are Phase 2. The build order is in [TODO.md](TODO.md).
 
 What works today: MCP over HTTP with Keycloak or service-key auth, identity resolution
-(person vs service, trusted vs quarantined), Postgres with pgvector reachable from both
-processes, and the worker's startup checks.
+(person vs service, trusted vs quarantined), migrations, the read tools, the seed loader
+and the eval harness.
 
 ---
 
@@ -80,7 +81,7 @@ openclaw mcp set owl '{"url":"https://owl.af.atlas-ml.org/mcp","transport":"stre
 openclaw mcp probe owl
 ```
 
-Tools appear as `owl__owl_status`, and later `owl__search_knowledge`, …
+Tools appear as `owl__owl_status`, `owl__search_knowledge`, …
 
 ---
 
@@ -156,10 +157,12 @@ config.ts         every environment variable, in one place
 identity.ts       Keycloak claims -> a person or service identity
 authMiddleware.ts bearer token -> req.owlIdentity
 logger.ts         the shared AF MCP logging convention
-db/               pool, migrations, queries
+db/               pool, migration runner, hybrid search, claim shaping, seed loader
+db/migrations/    numbered SQL migrations, applied in order by the worker
 db/init/          extensions, run once at database initialization
 tools/            MCP tool registrations
-llm/              provider abstraction (planned)
+llm/              embeddings today; the chat provider abstraction arrives in Phase 2
+eval/             the gold-set runner (`npm run eval`)
 pipeline/         parse, extract, novelty, contradict, commit (planned)
 ```
 
@@ -187,18 +190,23 @@ to a plain directory so no credentials are needed to run OWL on a laptop.
 
 | Tool | Purpose |
 | --- | --- |
-| `owl_status` | Version, database reachability, claim count, configured models and blob backend, and how the caller is identified. The only tool that exists today. |
+| `owl_status` | Version, database reachability, schema version, claim count, configured models and blob backend, and how the caller is identified. |
 
-### Read (planned)
+### Read
 
 | Tool | Purpose |
 | --- | --- |
-| `search_knowledge` | Hybrid search (vector + lexical + structured filters: entity, time window, status). Returns claims with citations. |
-| `get_claim` | One claim in full: provenance, edges, history, disputes. |
-| `traverse_entity` | Walk the graph around an entity — what OWL knows about a system, and how the pieces relate. |
+| `search_knowledge` | Hybrid search (vector + lexical + entity, fused by reciprocal rank) with filters: entity, point in time (`as_of`), history, unconfirmed. Returns claims with citations. |
+| `get_claim` | One claim in full — citations, edges, open disputes — and its supersession chain. |
+| `traverse_entity` | Everything about one system: its aliases, the claims about it, and claims reachable over edges up to n hops. |
 | `get_timeline` | How knowledge about a subject changed over time; what superseded what, and when. |
-| `list_disputes` | Open contradictions, ranked by how often query traffic hits them. |
-| `fetch_source` | Retrieve the original document, or just the cited span, behind a claim. |
+| `list_disputes` | Unsettled contradictions, ranked by how often query traffic hit them in 30 days. |
+| `fetch_source` | The sources behind a claim, with the exact cited spans. Full originals arrive with the blob store. |
+
+Every claim comes back with `flags` and `warnings` — `superseded`, `disputed`,
+`unconfirmed`, `retired`, `expired`, `not_yet_valid`, `stale` — and an empty list means
+current, confirmed and fresh. Clients should relay the warnings: a superseded claim is
+history, not an answer.
 
 ### Write (planned)
 
@@ -287,6 +295,11 @@ A frozen gold set of *question to expected-current-answer* pairs runs on every p
 model change, scoring **retrieval recall** and **answer correctness** separately so it is
 clear which half regressed. Without it there is no way to tell whether a change helped.
 
+The gold set and the seed claims are private — they come from agent memory — and live in
+`owl/` of `maniaclab/aegis-agents`, never in this repository. Questions can also list
+`must_flag` claims: if one of those is returned at all, it must carry an unsettled flag.
+Answer correctness is reported as skipped until `compose_brief` exists.
+
 ---
 
 ## Deployment
@@ -345,9 +358,22 @@ docker compose up -d db      # Postgres 17 + pgvector on :5433, extensions creat
 cp .env.example .env         # then set API_KEY_1 to any string for local testing
 
 npm start                    # owl-mcp   -> http://localhost:3400/mcp
-npm run worker               # owl-worker, in another shell
+npm run worker               # owl-worker, in another shell; migrates first
 npm run inspector            # interactive MCP test UI
 ```
+
+Load the seed claims and score retrieval, with a checkout of the private
+`maniaclab/aegis-agents` next to this repository:
+
+```bash
+npm run migrate              # or just start the worker once
+npm run seed -- --repo ../../../aegis-agents            # --dry-run validates quotes only
+npm run eval -- --repo ../../../aegis-agents            # --verbose, --min-recall 0.9
+```
+
+The seed loader is idempotent: re-running updates claims in place and re-embeds only those
+whose text changed. `--no-edges` loads superseded pairs as two active claims, which is the
+input Phase 3 conflict detection has to handle on its own.
 
 Note that a variable already exported in your shell wins over `.env` — dotenv does not
 override the environment. `OPENAI_API_KEY` is the one that catches people out.
@@ -381,6 +407,9 @@ curl -s -X POST localhost:3400/mcp \
 | `OWL_STRONG_BASE_URL`, `OWL_MODEL_STRONG` | Hosted endpoint and model for adjudication |
 | `OPENAI_API_KEY` | Key for the hosted strong model and for embeddings |
 | `OWL_EMBEDDING_MODEL` | Embedding model id (`text-embedding-3-large`, 3072-dim) |
+| `OWL_EMBEDDING_DIMENSIONS` | Must match the `claims.embedding` column; the worker refuses to start otherwise |
+| `OWL_EMBEDDING_BASE_URL` | OpenAI-compatible embeddings endpoint (default `https://api.openai.com/v1`) |
+| `OWL_SEED_REPO` | Default `--repo` for `npm run seed` and `npm run eval` |
 | `API_KEY_1`, `API_KEY_2` | Shared service keys — read-only |
 | `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_AUDIENCE` | Identity for attributed writes; the audience is `owl-mcp` in production |
 | `MCP_RESOURCE_URL`, `MCP_OAUTH_SCOPE` | Public `/mcp` URL and advertised scope, for OAuth discovery |
