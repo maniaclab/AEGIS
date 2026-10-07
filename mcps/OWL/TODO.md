@@ -106,9 +106,13 @@ the `DATABASE_URL` and `OWL_MODE` guards.
       (`192.170.240.0/23`) to `dgx-spark1` before it reaches the host (tcpdump on spark1
       sees nothing), so OWL goes over the tailnet instead: `deploy/base/spark-relay.yaml`
       (tailscale in userspace mode + socat) and `OWL_CHEAP_BASE_URL: http://spark-relay:8000/v1`.
-* [ ] After the relay's first login, check the worker's startup log has no
-      `cheap model endpoint` error, and revoke the auth key in the Tailscale console
-      (`TS_AUTH_ONCE` means it is not needed again while `spark-relay-tsstate` exists).
+* [x] After the relay's first login, check the worker's startup log has no
+      `cheap model endpoint` error. Verified 2026-10-07: the worker logs `cheap model
+      'nano-30b' available`, and `/v1/models` answers through the relay. The relay logged
+      `SOCKS5 server error` every 10 s until 2026-10-06 17:20 UTC (vLLM on spark1 down),
+      none since.
+* [x] Revoke the relay's auth key in the Tailscale console (`TS_AUTH_ONCE` means it is
+      not needed again while `spark-relay-tsstate` exists). Revoked 2026-10-07.
 * [x] `owl.af.atlas-ml.org` DNS record and ingress.
 * [x] Storage class: `rook-ceph-block` (RBD), set explicitly. The first PVC landed on the
       cluster default, `reanadev-shared-volume-storage-class` (CephFS), and was recreated
@@ -117,9 +121,10 @@ the `DATABASE_URL` and `OWL_MODE` guards.
 * [x] Deployed in `aegis`: `mcp-server-owl`, `owl-worker`, `owl-postgres-0`.
 * [x] Verified 2026-10-05: `owl_status` over OAuth answers with the database reachable
       and the caller identified as a trusted person.
-* [ ] Worker heartbeat logged `database unreachable: Connection terminated due to
-      connection timeout` on 2026-09-30 and 2026-10-01. Check whether the pool drops idle
-      connections before Phase 1 makes the worker do real work.
+* [x] Worker heartbeat logged `database unreachable: Connection terminated due to
+      connection timeout` on 2026-09-30 and 2026-10-01. Checked 2026-10-07: no
+      unreachable or timeout lines in 46 h of the current worker, so it was the old
+      CephFS-backed database before the PVC was recreated on `rook-ceph-block`.
 
 ## Phase 1 — the store and the read path
 
@@ -160,8 +165,14 @@ they are still cheap to change.
       explicit staleness/dispute flag. Never let a disputed claim come back looking settled.
 * [ ] Seed script: a few dozen hand-written claims about a system we know well (Rucio
       subscriptions, or the AF login flow) to exercise retrieval.
+      Seed data drafted 2026-10-07 from real agent memory instead: 43 claims and 20
+      entities in `owl/seed-claims.yaml` in the private `maniaclab/aegis-agents` (never
+      here). Each claim carries a verbatim `quote` of its source at a pinned export commit,
+      and the loader turns it into a char-offset provenance span. Still needed: the loader.
 * [ ] Eval harness skeleton — `eval/` with a runner, scoring retrieval recall and answer
       correctness *separately*, wired to `npm run eval` even though the gold set is tiny.
+      Gold set: 22 questions in `owl/eval-gold.yaml` (aegis-agents), including one
+      `must_flag` cases (GGUS states s18→s19, Varnish version s32→s44).
 
 ## Phase 2 — ingest pipeline
 
