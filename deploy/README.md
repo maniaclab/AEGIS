@@ -2,4 +2,4 @@
 
 Deployed on AF UC cluster.
 All deployments have 1 replica and no PodDisruptionBudget.
-All deployments are tagged with sha code, date, and branch name. Deployments use date tags.
+Images are tagged `latest` and with the build date (`YYYY-MM-DD`); the commit SHA is recorded in the `org.opencontainers.image.revision` label. Deployments use date tags.
