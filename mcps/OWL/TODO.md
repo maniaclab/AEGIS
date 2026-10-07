@@ -126,7 +126,7 @@ the `DATABASE_URL` and `OWL_MODE` guards.
       unreachable or timeout lines in 46 h of the current worker, so it was the old
       CephFS-backed database before the PVC was recreated on `rook-ceph-block`.
 
-## Phase 1 — the store and the read path ✅ (locally; deploy pending)
+## Phase 1 — the store and the read path ✅
 
 Goal: claims can be inserted by hand (SQL or a seed script) and retrieved well through MCP.
 No LLM in the loop yet — this phase is about getting retrieval and the schema right while
@@ -179,9 +179,12 @@ they are still cheap to change.
       failures (lexical+entity alone: MRR 0.888). With `--no-edges` it correctly fails
       s18. The eval is the fixture-corpus test for hybrid search; a corpus of 43 claims
       flatters any ranker, so treat these numbers as a smoke test.
-* [ ] Deploy: merge, let the worker migrate the cluster database, then seed it from a
-      laptop through `kubectl port-forward svc/owl-postgres 5432` with the cluster
-      `DATABASE_URL`. Check `owl_status` reports `claims: 43`.
+* [x] Deploy: merge, let the worker migrate the cluster database, then seed it from a
+      laptop through `kubectl port-forward svc/owl-postgres 15432:5432` with the cluster
+      `DATABASE_URL` (from the `owl-db` secret, host rewritten to `localhost:15432`).
+      Done 2026-10-07 (image `sha256:40a43f12…`): worker applied `001_init`, seed loaded
+      43 claims, eval on the cluster database matches local (recall@5 0.985, MRR 0.911),
+      and `owl_status` through the ingress reports `claims: 43`.
 * [ ] Eval in CI. The gold set is private, so CI needs read access to aegis-agents (a
       deploy key) and a throwaway pgvector service container.
 
