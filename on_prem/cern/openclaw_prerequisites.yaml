@@ -1,0 +1,91 @@
+# OpenClaw node host on Kubernetes, reaching the Gateway over a tailnet.
+#
+# FILL IN before applying:
+#   GW_FQDN   your gateway's MagicDNS name, e.g. spark-2.taile00417.ts.net
+#   GW_TSIP   that device's tailnet IP, e.g. 100.86.2.51
+#   STORAGE   a StorageClass name (or delete the field to use the default)
+#
+# Apply:  kubectl apply -f openclaw-node.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openclaw-node
+  labels:
+    # The Tailscale sidecar needs NET_ADMIN, which Pod Security "baseline" forbids.
+    # Drop these three lines if the cluster has no PSA enforcement.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+# The node host has no listener; this exists only to satisfy StatefulSet.serviceName.
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw-node
+  namespace: openclaw-node
+spec:
+  clusterIP: None
+  selector:
+    app: openclaw-node
+  ports:
+    - name: placeholder
+      port: 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-node-config
+  namespace: openclaw-node
+data:
+  # Seeded into the PVC only if absent; the persisted copy wins afterwards.
+  openclaw.json: |
+    {
+      "nodeHost": {
+        "browserProxy": {
+          "enabled": false
+        }
+      }
+    }
+---
+# RBAC for the Tailscale sidecar: it persists device state in a Kubernetes
+# Secret named "tailscale" (separate from the TS_STATE_DIR volume, used so
+# restarts don't require a fresh auth key) and, given POD_NAME/POD_UID,
+# writes Events against its own Pod for easier debugging.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openclaw-node
+  namespace: openclaw-node
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openclaw-node-tailscale
+  namespace: openclaw-node
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["tailscale"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openclaw-node-tailscale
+  namespace: openclaw-node
+subjects:
+  - kind: ServiceAccount
+    name: openclaw-node
+    namespace: openclaw-node
+roleRef:
+  kind: Role
+  name: openclaw-node-tailscale
+  apiGroup: rbac.authorization.k8s.io
+---

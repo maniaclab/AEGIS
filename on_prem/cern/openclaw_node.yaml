@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: openclaw-node
+  namespace: openclaw-node
+spec:
+  serviceName: openclaw-node
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openclaw-node
+  template:
+    metadata:
+      labels:
+        app: openclaw-node
+    spec:
+      # MagicDNS cannot rewrite a pod's resolv.conf, so resolve the gateway's
+      # ts.net name statically. Keeping the *.ts.net name (rather than dialing
+      # the 100.x address) is what keeps plaintext ws:// on the allowlist.
+      hostAliases:
+        - ip: "100.86.2.51"
+          hostnames:
+            - "spark-2.taile00417.ts.net"
+      serviceAccountName: openclaw-node
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        # Native sidecar: starts first, keeps running, torn down last.
+        - name: tailscale
+          image: tailscale/tailscale:stable
+          restartPolicy: Always
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-node-secrets
+                  key: TS_AUTHKEY
+            - name: TS_STATE_DIR
+              value: /var/lib/tailscale
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_HOSTNAME
+              value: openclaw-node-cern
+            - name: TS_EXTRA_ARGS
+              value: "--accept-dns=false"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add: ["NET_ADMIN"]
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/tailscale
+              subPath: tailscale
+            # Uncomment if the sidecar logs "/dev/net/tun does not exist".
+            # - name: dev-net-tun
+            #   mountPath: /dev/net/tun
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+
+        - name: seed-config
+          image: ghcr.io/openclaw/openclaw:2026.9.7-slim
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /home/node/.openclaw
+              cp -n /seed/openclaw.json /home/node/.openclaw/openclaw.json || true
+              # Block until the gateway is reachable over the tailnet, so the
+              # node host does not crash-loop while tailscaled authenticates.
+              # NOTE: this image's /bin/sh is dash, which has no /dev/tcp support
+              # (that's bash-only) - use wget instead of a bash-style TCP probe.
+              until curl -s -o /dev/null --max-time 3  "http://spark-2.taile00417.ts.net:18789" 2>/dev/null; do
+                echo "waiting for spark-2.taile00417.ts.net:18789"; sleep 3
+              done
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          volumeMounts:
+            - name: state
+              mountPath: /home/node
+              subPath: home
+            - name: seed
+              mountPath: /seed
+
+      containers:
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:2026.9.7-slim
+          # Image entrypoint is just tini (ENTRYPOINT ["tini","-s","--"]); the
+          # default CMD is ["node","openclaw.mjs","gateway"]. Our args here
+          # fully replace CMD, so we must repeat the "node openclaw.mjs"
+          # prefix ourselves before the "node run" subcommand.
+          args:
+            - node
+            - openclaw.mjs
+            - node
+            - run
+            - --host
+            - spark-2.taile00417.ts.net
+            - --port
+            - "18789"
+            - --display-name
+            - cern-k8s
+          env:
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-node-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: state
+              mountPath: /home/node
+              subPath: home
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 2Gi }
+          # No probes: the node host is a WS client with no HTTP surface.
+
+      volumes:
+        - name: seed
+          configMap:
+            name: openclaw-node-config
+        - name: tmp
+          emptyDir: {}
+        # - name: dev-net-tun
+        #   hostPath:
+        #     path: /dev/net/tun
+        #     type: CharDevice
+
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: cinder-standard
+        resources:
+          requests:
+            storage: 5Gi
