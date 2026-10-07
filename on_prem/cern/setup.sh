@@ -24,3 +24,19 @@ flux bootstrap github --owner ATLAS-Analytics --repository=flux_admin --branch=m
 
 # everything in this directory is deployed to the cluster using fluxcd.
 
+# force reconcile the kustomization
+flux reconcile kustomization aegis --with-source
+
+# check flux state
+flux get all -A                     # everything at a glance
+flux get kustomizations             # READY + applied revision + error message
+flux get sources git
+flux get helmreleases -A
+
+flux get kustomizations --watch     # live updates
+
+kubectl -n flux-system describe kustomization aegis     # conditions + events
+flux events --for Kustomization/aegis
+flux logs --kind=Kustomization --name=aegis --level=error
+
+flux tree kustomization aegis  # list every object it manages
