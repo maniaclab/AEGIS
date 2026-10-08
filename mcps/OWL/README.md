@@ -17,14 +17,16 @@ Design rationale and the conversation it came from: [AGENT.md](AGENT.md).
 
 ## Status
 
-**Phase 1 — the store and the read path.** The schema exists and the worker migrates it at
-startup; claims are loaded by a seed script, and the six read tools answer over MCP with
-hybrid search and citations. Nothing writes through MCP yet: the write tools and the ingest
-pipeline are Phase 2. The build order is in [TODO.md](TODO.md).
+**Phase 2 — the ingest pipeline.** Knowledge can be submitted over MCP: free text and
+conversations with a confirmation step, whole documents through the worker's queue. OWL
+extracts claims, anchors them to entities (CRIC for sites), checks them against what it
+already knows, and commits them — active for a trusted writer, quarantined otherwise.
+Contradiction handling is Phase 3. The build order is in [TODO.md](TODO.md).
 
 What works today: MCP over HTTP with Keycloak or service-key auth, identity resolution
-(person vs service, trusted vs quarantined), migrations, the read tools, the seed loader
-and the eval harness.
+(person vs service, trusted vs quarantined), the read and write tools, the ingest queue,
+the blob store, the seed loader, the eval harness, and the re-embed and re-extract
+maintenance scripts.
 
 ---
 
@@ -208,17 +210,24 @@ Every claim comes back with `flags` and `warnings` — `superseded`, `disputed`,
 current, confirmed and fresh. Clients should relay the warnings: a superseded claim is
 history, not an answer.
 
-### Write (planned)
+### Write
 
 | Tool | Purpose |
 | --- | --- |
-| `submit_knowledge` | Submit free text (typically a conversation turn). Runs extraction **synchronously** and returns the extracted claims with novelty/conflict verdicts for confirmation in the same turn. |
-| `submit_document` | Submit a URL or file. Returns a job id; poll with `get_job`. |
-| `confirm_claim` | Attest an existing claim — a second independent source is a confidence signal. |
-| `dispute_claim` | Open a dispute against a claim with a counter-statement. |
-| `resolve_dispute` | Record a verdict. Options are **A / B / both true under different conditions / neither, here is the truth**. |
-| `retire_claim` | Close a claim's validity window, with reason and provenance. |
-| `get_job` | Poll an async ingest job. |
+| `submit_knowledge` | Submit free text or a conversation (only human turns count). Runs extraction **synchronously** and returns the claims with novelty verdicts — nothing is stored yet. |
+| `confirm_submission` | Store a `submit_knowledge` preview: all claims, or chosen ones, optionally reworded; or reject it. Previews expire after 24 hours. |
+| `submit_document` | Queue a markdown or plain-text document, inline or by https URL on an allowed host. Returns a job id; committed without a confirmation step. |
+| `get_job` | State and outcome of a submission. |
+| `list_quarantine` | Claims waiting for a trusted writer, filterable by source kind (e.g. `agent-memory`) and entity. |
+| `confirm_claim` | Trusted writers: confirm quarantined claims, or attest active ones; many at once. |
+| `retire_claim` | Close claims with a reason (trusted writers, or the owner). Nothing is deleted. |
+
+Planned for Phase 3: `dispute_claim`, and `resolve_dispute` with the four outcomes
+**A / B / both true under different conditions / neither, here is the truth**.
+
+Who may submit: people (CERN login) always; services only when listed in
+`OWL_SUBMIT_SERVICES`, and everything a service submits is quarantined. Agent memory
+(`source_kind: agent-memory`) is quarantined whoever submits it.
 
 Write tools never ack into a black box. `submit_knowledge` answers with
 *"6 claims extracted, 2 new, 1 conflicts with something Marco asserted in June"* so the
@@ -228,18 +237,28 @@ submitter can correct it immediately. Submitting blind kills trust on day one.
 
 ## Ingest pipeline
 
-Idempotent stages, each keyed by `content_hash + prompt_version + model_version`. That key
-is what makes re-extraction affordable: improve a prompt, replay only what changed, diff
-the new claims against the old before committing.
+Idempotent stages, each keyed by `content_hash + prompt_version + model_version` (and the
+submitter). That key is what makes re-extraction affordable: improve a prompt, replay only
+what changed, diff the new claims against the old before committing.
 
-1. **Parse** — documents, slides, wiki, GitHub, mail into normalized text + structure.
-2. **Extract** — constrained decoding against a JSON schema that *requires* span offsets.
-3. **Novelty** — hybrid retrieval of near neighbours per candidate; drop exact duplicates,
-   keep refinements.
-4. **Contradict** — pull existing claims for the same entity and classify each pair as
+1. **Parse** — text and markdown pass through untouched; a conversation becomes a
+   labelled transcript whose human turns are the only citable ranges. PDF, PPTX and HTML
+   are still to come.
+2. **Extract** — the document is shown with numbered lines and the model cites a line
+   range per claim, under a JSON schema (guided decoding). Models do not copy quotes
+   verbatim reliably, but they do copy line numbers, so every citation is the original
+   text by construction. A second pass labels each claim — fact, instruction, preference,
+   incident status — on the claim alone, and keeps only facts.
+3. **Resolve entities** — known names and aliases, then trigram matches, then CRIC for
+   site-like names, else a provisional entity. A value ("8.0", "6082") never becomes an
+   entity; such a claim is stored without a subject.
+4. **Novelty** — the nearest existing claims by embedding are shown to the model, which
+   classifies each candidate as duplicate, refines, conflicts or new. A duplicate adds a
+   citation to the existing claim instead of a new claim.
+5. **Contradict** (Phase 3) — pull existing claims for the same entity and classify each pair as
    `duplicate | refinement | temporal_supersession | scope_qualification | true_conflict`.
    A cheap model triages; the strong model only sees the last two categories.
-5. **Commit** — one transaction: rows, edges, provenance, audit entry.
+6. **Commit** — one transaction: rows, edges, provenance, audit entry.
 
 Temporal supersessions auto-commit by closing the old claim's `valid_to`. Scope
 qualifications and true conflicts open a **dispute**.
@@ -375,6 +394,15 @@ The seed loader is idempotent: re-running updates claims in place and re-embeds 
 whose text changed. `--no-edges` loads superseded pairs as two active claims, which is the
 input Phase 3 conflict detection has to handle on its own.
 
+Extraction needs the cheap model; on the tailnet, set `OWL_CHEAP_BASE_URL` to
+`http://spark1:8000/v1`. Maintenance:
+
+```bash
+npm run reextract                          # dry run: replay documents extracted with an older prompt, and diff
+npm run reextract -- --all --commit        # replay everything, commit what is new (quarantined)
+npm run reembed -- --dimensions 1536       # rebuild embeddings in a shadow column, then swap
+```
+
 Note that a variable already exported in your shell wins over `.env` — dotenv does not
 override the environment. `OPENAI_API_KEY` is the one that catches people out.
 
@@ -410,6 +438,12 @@ curl -s -X POST localhost:3400/mcp \
 | `OWL_EMBEDDING_DIMENSIONS` | Must match the `claims.embedding` column; the worker refuses to start otherwise |
 | `OWL_EMBEDDING_BASE_URL` | OpenAI-compatible embeddings endpoint (default `https://api.openai.com/v1`) |
 | `OWL_SEED_REPO` | Default `--repo` for `npm run seed` and `npm run eval` |
+| `OWL_CHEAP_THINKING` | Let the cheap model reason before answering (default `true`) |
+| `OWL_EXTRACTION_TIER` | `cheap` (default) or `strong`: which model extracts claims and judges novelty |
+| `OWL_SUBMIT_SERVICES` | Service identities allowed to submit (always quarantined) |
+| `OWL_RATE_LIMIT_PER_HOUR` | Submissions per identity per hour (default 30; trusted writers ×10) |
+| `OWL_FETCH_ALLOWED_HOSTS` | Hosts `submit_document` may fetch from |
+| `OWL_CRIC_MCP_URL` | CRIC MCP endpoint, for anchoring site entities |
 | `API_KEY_1`, `API_KEY_2` | Shared service keys — read-only |
 | `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_AUDIENCE` | Identity for attributed writes; the audience is `owl-mcp` in production |
 | `MCP_RESOURCE_URL`, `MCP_OAUTH_SCOPE` | Public `/mcp` URL and advertised scope, for OAuth discovery |

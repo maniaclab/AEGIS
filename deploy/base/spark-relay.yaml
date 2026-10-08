@@ -1,20 +1,21 @@
-# spark-relay — lets aegis pods reach the vLLM on DGX Spark 1 over the tailnet.
+# spark-relay — lets aegis pods reach the vLLMs on the DGX Sparks over the tailnet.
 #
 # The campus network drops traffic from the AF cluster (192.170.240.0/23) to the
 # Sparks, but both sides are on Tailscale. This pod joins the tailnet and forwards
-#   spark-relay:8000  →  spark1.taile00417.ts.net (100.111.147.45):8000
+#   spark-relay:8000  →  spark1  (100.111.147.45):8000   nano-30b (Nemotron 3 Nano)
+#   spark-relay:8001  →  spark-2 (100.86.2.51):8000      qwen3.6-35b — OWL's cheap model
 #
 #   tailscale  — userspace networking (no NET_ADMIN, no /dev/net/tun), exposes a
 #                SOCKS5 proxy on localhost:1055. Node state lives in the Secret
 #                spark-relay-tsstate, so the relay keeps its identity across restarts and
 #                the auth key is only used for the first login (TS_AUTH_ONCE).
-#   socat      — plain TCP listener on :8000 that dials through that SOCKS5 proxy.
+#   socat-*    — one plain TCP listener per target, dialling through that SOCKS5 proxy.
 #
 # The target is the tailnet IP rather than the MagicDNS name: cluster DNS cannot
-# resolve *.ts.net. Get it with `tailscale ip -4 spark1` if the node is re-added.
+# resolve *.ts.net. Get it with `tailscale ip -4 spark1` (or spark-2) if a node is re-added.
 #
 # Tailnet ACL: the auth key carries tag:af-k8s, and the policy should allow only
-#   { "action": "accept", "src": ["tag:af-k8s"], "dst": ["spark1:8000"] }
+#   { "action": "accept", "src": ["tag:af-k8s"], "dst": ["spark1:8000", "spark-2:8000"] }
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -66,9 +67,12 @@ spec:
   selector:
     app: spark-relay
   ports:
-    - name: vllm
+    - name: vllm-spark1
       port: 8000
       targetPort: 8000
+    - name: vllm-spark2
+      port: 8001
+      targetPort: 8001
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -151,6 +155,30 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "500m"
+        - name: socat-spark2
+          image: alpine/socat:1.8.1.3
+          args:
+            - "TCP-LISTEN:8001,fork,reuseaddr"
+            - "SOCKS5-CONNECT:127.0.0.1:1055:100.86.2.51:8000"
+          ports:
+            - containerPort: 8001
+          readinessProbe:
+            tcpSocket:
+              port: 8001
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "10m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
 ---
 # Only OWL may use the relay. Everything else on the tailnet stays out of reach anyway
 # (socat has one fixed target), but the GPU should not become a free-for-all.
@@ -175,3 +203,5 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+        - protocol: TCP
+          port: 8001

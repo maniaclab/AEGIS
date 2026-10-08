@@ -47,6 +47,7 @@ export function registerStatusTool(server: McpServer, identity?: Identity): void
                             id: identity.id,
                             username: identity.username,
                             can_write: identity.canWrite,
+                            can_submit: identity.canSubmit,
                             trusted: identity.trusted,
                         }
                         : null,

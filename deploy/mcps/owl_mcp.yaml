@@ -149,6 +149,8 @@ spec:
                 name: openai-key
             - secretRef:
                 name: owl-mattermost # MATTERMOST_WEBHOOK_URL — used from Phase 3
+            - secretRef:
+                name: mcp-keys # API_KEY_1, as a client of the CRIC MCP only
             - configMapRef:
                 name: owl-config
           resources:

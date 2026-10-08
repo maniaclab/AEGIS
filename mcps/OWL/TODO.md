@@ -82,9 +82,7 @@ cluster, from CI. Get the whole pipe working before there is anything interestin
       `owl-mattermost-secret.yaml`, each with its `kubeseal` invocation in a comment.
 * [x] vLLM reachability check at worker startup: logs `ERROR` if the endpoint is dead and
       `WARN` if it answers but does not serve the configured model.
-* [ ] Blob store abstraction (S3 + `BLOB_DIR`). Only the configuration and backend
-      detection exist; the read/write implementation lands in Phase 2 with the first
-      parser, which is the first thing that actually stores an original.
+* [x] Blob store abstraction (S3 + `BLOB_DIR`), `pipeline/blob.ts` — landed with Phase 2.
 
 ### Verified locally
 
@@ -188,41 +186,97 @@ they are still cheap to change.
 * [ ] Eval in CI. The gold set is private, so CI needs read access to aegis-agents (a
       deploy key) and a throwaway pgvector service container.
 
-## Phase 2 — ingest pipeline
+## Phase 2 — ingest pipeline ✅ (deploy pending)
 
 Goal: `submit_knowledge` and `submit_document` actually work, with novelty detection but
 before the full contradiction machinery.
 
-* [ ] LLM provider abstraction: `chat(model, schema)` with structured output, plus
-      `embed(texts)`. Cheap/strong split configured by env, so switching between vLLM and
-      hosted is a config change.
-* [ ] Parsers: markdown/plain text first; then PDF and PPTX; HTML for wiki pages. Each
-      records `parser_version` and preserves character offsets — the offsets are what make
-      provenance verifiable, so they cannot be dropped in cleanup.
-* [ ] Extraction prompt + JSON schema requiring, per claim: text, subject entity,
-      span_start/span_end, temporal scope if stated, confidence. Constrained decoding.
-      Version the prompt; the version is part of the job idempotency key.
-* [ ] **Conversation rule**: when the payload is a chat transcript, only the human turns
-      are treated as assertions. Assistant turns are context, never sources.
-* [ ] Entity resolution: match extracted entity mentions against `entities`/aliases, and
-      against CRIC for sites and services (reuse the CRIC MCP's fetch logic). Unmatched
-      mentions create provisional entities flagged for review.
-* [ ] Novelty check: embed each candidate, retrieve neighbours filtered to the same
-      entity, drop exact duplicates (record an extra `claim_provenance` row instead —
-      re-attestation raises confidence), keep refinements.
-* [ ] Job queue on the same Postgres (`pgqueuer`-style `SELECT ... FOR UPDATE SKIP
-      LOCKED`); no extra infrastructure. Worker drains it; `get_job` polls.
-* [ ] `submit_knowledge` runs the pipeline synchronously and returns the extraction for
-      confirmation — *"6 claims, 2 new, 1 conflicts"* — with a `confirm` handle.
-      `submit_document` returns a job id.
-* [ ] Quarantine state for claims from identities not on the trusted list.
-* [ ] Rate limits per identity; audit every write.
-* [ ] Re-embed path: `npm run reembed` that rebuilds the embedding column (new model or
-      new dimension) into a shadow column and swaps it, so the 3072-dim choice is not a
-      one-way door once there are claims.
-* [ ] Replay tooling: `npm run reextract --since=... --prompt-version=...` that re-runs
-      extraction and **diffs new claims against old before committing**. This is the payoff
-      for the idempotency key and the reason to build it now rather than later.
+* [x] LLM provider abstraction (`llm/provider.ts`): `chat({tier, system, user, schema})`
+      with structured output, plus `embed(texts, {model, dimensions})`. Cheap/strong split
+      by env. `OWL_CHEAP_THINKING` (default on) lets Nemotron reason first: it extracted
+      better and was not slower. `OWL_EXTRACTION_TIER` routes extraction and novelty to
+      either tier.
+* [ ] Parsers: markdown/plain text and conversations done (`pipeline/parse.ts`). Still to
+      do: PDF, PPTX, HTML. Their spans will index the parsed text, stored next to the
+      original (`documents.text_ref`, already in the schema).
+* [x] Extraction (`pipeline/extract.ts`, `extract-v2`). Changed from the plan after
+      testing on the agent memory files:
+      - spans come from **line numbers**, not quotes or offsets. Nemotron paraphrased or
+        invented about a third of its "verbatim" quotes however the prompt asked; line
+        numbers it copies. The cited span is the original lines, verbatim by construction.
+      - a **second pass labels each claim** fact / instruction / preference /
+        incident_status, on the claim alone, and keeps facts. Asked inside extraction, with
+        an agent's memory in view, the model labelled nearly everything an instruction.
+      - reference material (known entities, the format example) lives in the system
+        prompt, the document alone in the user turn; otherwise the model "extracted" the
+        entity list and the example.
+* [x] **Conversation rule**: only human turns get line numbers, so only they can be cited.
+      Verified: facts stated only by the assistant were not extracted.
+* [x] Entity resolution (`pipeline/entities.ts`): id/name/alias, then trigram, then the CRIC
+      MCP (`list_rc_sites`, in-cluster, API_KEY_1) for site-like names, else provisional.
+      Values and fragments ("8.0", "it", a command line) are rejected as subjects; the
+      claim is stored without one rather than minting a junk entity.
+* [x] Novelty (`pipeline/novelty.ts`, `novelty-v1`): embedding neighbours (top 3), then the
+      model classifies duplicate / refines / conflicts / new in one batched call per
+      document. Cosine alone cannot decide — rewordings of one fact scored 0.6-0.9, the
+      same band as different facts about one system. Duplicates add a citation to the
+      existing claim (+0.05 confidence); refines/conflicts are kept and flagged related,
+      with the neighbour recorded, for Phase 3.
+* [x] Job queue on Postgres (`db/jobs.ts`, `SELECT ... FOR UPDATE SKIP LOCKED`), drained by
+      the worker; retries with exponential backoff (3 attempts); orphaned `running` jobs
+      requeued at startup; idempotent by key, and a failed/expired/rejected job re-arms.
+* [x] `submit_knowledge` (synchronous preview, nothing stored) + `confirm_submission`
+      (accept / reject / edit by idx, or reject all; previews expire after 24 h).
+      `submit_document` (inline or allow-listed https URL) + `get_job`.
+* [x] Quarantine: untrusted identities, every service, and every `agent-memory` source
+      land in `quarantined`. `list_quarantine`, `confirm_claim` (bulk) and `retire_claim`
+      pulled forward from Phase 3 for the Tier 2 bulk review.
+* [x] Rate limits per identity, counted in the database (`OWL_RATE_LIMIT_PER_HOUR`,
+      trusted ×10); every write audited with identity and token id (`jti`).
+* [x] Service submitters: `OWL_SUBMIT_SERVICES` lists the service identities that may
+      submit (always quarantined) — for the agent-memory exporter.
+* [x] Re-embed: `npm run reembed -- --model … --dimensions …` fills a shadow column,
+      swaps in one transaction, rebuilds the HNSW index; resumable. Round-tripped
+      3072 → 1536 → 3072 locally with eval unchanged.
+* [x] Replay: `npm run reextract [--since] [--document] [--all] [--commit]` re-runs
+      extraction over stored originals and diffs kept / added / missing per document;
+      `--commit` adds new claims as quarantined and never retires missing ones.
+* [x] Blob store: S3 (NRP Ceph, `owl-s3`) or `BLOB_DIR`, content-addressed by sha256.
+
+### Measured on agent memory (local, 2026-10-07)
+
+Against the seed (which was hand-extracted from the same files), with `nano-30b`:
+extraction recall is good (conditioner 36, rodbot 46 claims), but subjects are noisy,
+the fact filter is inconsistent between runs (keeps some incident notes and agent rules,
+drops some facts), and novelty labels many restatements "refines". With `gpt-5`
+(`OWL_EXTRACTION_TIER=strong`) on conditioner: 56 well-formed claims with correct
+subjects; 28 recognised as already known, 8 related, 20 genuinely new; about $0.20 and
+2.5 minutes per file. Quarantine review catches either way; the strong tier makes that
+review short.
+
+With `qwen3.6-35b` on Spark 2 (same prompts): conditioner 33 claims, 17 known, 11 new;
+rodbot 39, 19 known, 17 new; networker 10 of 10 recognised as known, incident notes
+dropped. Subjects and filtering close to gpt-5, at 200-530 s per file.
+
+### Decided 2026-10-07
+
+* [x] Extraction tier: the cheap tier, repointed from Nemotron (Spark 1) to
+      `qwen3.6-35b` on Spark 2 through a second relay port (`spark-relay:8001`). Nemotron
+      stays reachable on `spark-relay:8000`. Qwen 3.8 is to replace 3.6 (repo TODO).
+* [x] Exporter credential: a Keycloak service-account client `owl-exporter`
+      (`svc:kc:owl-exporter`, on `OWL_SUBMIT_SERVICES`).
+* [x] Tier 2 hook: `agents-export/export_agents.py --owl-agents …` submits each changed
+      `MEMORY.md` after the push, as `agent-memory`, with a `git:` URI pinned to the
+      export commit. Tested locally end to end with Qwen.
+
+### Still open
+
+* [x] Tailnet policy: allow `tag:af-k8s` → `spark-2:8000`. Done 2026-10-08, with policy
+      tests; verified from the relay pod (Spark 2 :8000 answers, :22 does not).
+* [ ] Keycloak: create `owl-exporter` (service accounts on, other flows off, `owl-mcp`
+      as a Default client scope); put its secret in `~/.config/aegis-export/owl.env` on
+      spark-2 and install the updated unit; run once with `--owl-all` to backfill.
+* [ ] Within-document duplicates (two candidates restating each other) are not merged.
 
 ## Phase 3 — contradictions, disputes, resolution
 

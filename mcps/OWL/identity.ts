@@ -20,8 +20,25 @@ export interface Identity {
     groups: string[];
     /** Service keys may read only. Writing requires a person. */
     canWrite: boolean;
+    /** May submit for extraction. People always; services only when on OWL_SUBMIT_SERVICES. */
+    canSubmit: boolean;
     /** Trusted writers commit directly; everyone else quarantines. */
     trusted: boolean;
+    /** Keycloak `jti`, recorded in the audit log. */
+    tokenId?: string;
+}
+
+/** A service identity, read-only unless it is on the submit list. Never trusted. */
+function service(id: string, username?: string): Identity {
+    return {
+        kind: 'service',
+        id,
+        username,
+        groups: [],
+        canWrite: false,
+        canSubmit: config.submitServices.includes(id),
+        trusted: false,
+    };
 }
 
 declare global {
@@ -58,13 +75,7 @@ function getSigningKey(kid: string): Promise<string> {
 export function identifyServiceKey(token: string): Identity | null {
     const index = config.serviceKeys.indexOf(token);
     if (index === -1) return null;
-    return {
-        kind: 'service',
-        id: `svc:${index + 1}`,
-        groups: [],
-        canWrite: false,
-        trusted: false,
-    };
+    return service(`svc:${index + 1}`);
 }
 
 /**
@@ -100,14 +111,7 @@ export async function identifyKeycloakToken(token: string): Promise<Identity | n
             || typeof payload.client_id === 'string'
             || typeof payload.clientId === 'string'
         ) {
-            return {
-                kind: 'service',
-                id: `svc:kc:${typeof payload.azp === 'string' ? payload.azp : sub}`,
-                username,
-                groups: [],
-                canWrite: false,
-                trusted: false,
-            };
+            return service(`svc:kc:${typeof payload.azp === 'string' ? payload.azp : sub}`, username);
         }
 
         const email = typeof payload.email === 'string' ? payload.email : undefined;
@@ -122,7 +126,9 @@ export async function identifyKeycloakToken(token: string): Promise<Identity | n
             email,
             groups,
             canWrite: true,
+            canSubmit: true,
             trusted: isTrusted(sub, username, email),
+            tokenId: typeof payload.jti === 'string' ? payload.jti : undefined,
         };
     } catch {
         return null;

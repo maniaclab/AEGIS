@@ -6,8 +6,8 @@
  * scheduled sweeps (TTL re-verification, dispute escalation, weekly digests). Running two
  * of these would duplicate every sweep, so the deployment pins it to one.
  *
- * Phase 1 does the migrations; the queue and sweeps arrive with Phases 2-3. It also
- * verifies at startup that everything the pipeline will depend on is actually reachable,
+ * It migrates, then drains the ingest queue; the scheduled sweeps arrive with Phase 3+.
+ * It also verifies at startup that everything the pipeline will depend on is actually reachable,
  * because a silent failure here — an unreachable Spark, say — would later stall the whole
  * ingest queue with no obvious cause.
  */
@@ -15,11 +15,44 @@ import { config } from './config.js';
 import { log, logUpstream } from './logger.js';
 import { closePool, dbStatus } from './db/pool.js';
 import { migrate } from './db/migrate.js';
+import { claimNext, expireAwaiting, failJob, finishJob, Job, requeueOrphans } from './db/jobs.js';
+import { DocumentPayload, runDocumentJob } from './pipeline/run.js';
 
 // @ts-expect-error ignore `with` keyword
 import pkg from './package.json' with { type: 'json' }
 
 const HEARTBEAT_MS = Number(process.env.OWL_HEARTBEAT_MS ?? 300_000);
+const POLL_MS = Number(process.env.OWL_JOB_POLL_MS ?? 2_000);
+
+let stopping = false;
+
+/** One job at a time: extraction is bound by the model, and order is easier to reason about. */
+async function drain(): Promise<void> {
+    while (!stopping) {
+        let job: Job<DocumentPayload> | null = null;
+        try {
+            job = await claimNext<DocumentPayload, unknown>();
+            if (!job) {
+                await new Promise((r) => setTimeout(r, POLL_MS));
+                continue;
+            }
+            if (job.kind !== 'submit_document') throw new Error(`unknown job kind '${job.kind}'`);
+            const started = Date.now();
+            const result = await runDocumentJob(job);
+            await finishJob(job.id, 'done', result, job.payload.source.hash);
+            log.info(`job ${job.id} done in ${((Date.now() - started) / 1000).toFixed(1)}s: ${result.summary}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            if (job) {
+                const state = await failJob(job, message).catch(() => 'unknown');
+                log.error(`job ${job.id} attempt ${job.attempts} failed (now ${state}): ${message}`);
+            } else {
+                log.error(`queue: ${message}`);
+                await new Promise((r) => setTimeout(r, POLL_MS * 5));
+            }
+        }
+    }
+}
 
 /** Confirm the cheap-path vLLM endpoint answers and serves the configured model. */
 async function checkCheapModel(): Promise<void> {
@@ -74,10 +107,13 @@ async function main(): Promise<void> {
         log.warn('OPENAI_API_KEY is not set — adjudication and embeddings will fail');
     }
 
-    // Phase 2 starts the queue drain here, Phase 3+ the sweeps.
-    log.info('no queue work yet (Phase 1) — idling');
+    const orphans = await requeueOrphans();
+    if (orphans) log.warn(`requeued ${orphans} job(s) left running by a previous worker`);
+    const draining = drain();
+    log.info('draining the ingest queue');
 
     const heartbeat = setInterval(() => {
+        void expireAwaiting().then((n) => n && log.info(`expired ${n} unconfirmed submission(s)`)).catch(() => undefined);
         void dbStatus().then((s) =>
             s.reachable
                 ? log.debug(`heartbeat: db ok, claims=${s.claims ?? 'n/a'}`)
@@ -87,7 +123,10 @@ async function main(): Promise<void> {
 
     const shutdown = async (signal: string): Promise<void> => {
         log.info(`${signal} received, shutting down...`);
+        stopping = true;
         clearInterval(heartbeat);
+        // Let the job in hand finish; requeueOrphans() picks it up next start if it does not.
+        await Promise.race([draining, new Promise((r) => setTimeout(r, 20_000))]);
         await closePool();
         process.exit(0);
     };

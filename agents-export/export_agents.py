@@ -6,18 +6,26 @@ each agent's workspace, adds redacted agent config and cron jobs, refuses to con
 anything looks like a secret, then force-pushes the result to an `export` branch and opens
 (or refreshes) a pull request against main. Merging that PR is the review step.
 
+With --owl-agents, each listed agent's MEMORY.md that changed in this export is then
+submitted to OWL as `agent-memory`, where its claims land in quarantine for review. OWL
+credentials come from the environment (see OWL_ENV); without them the step is skipped.
+
 Usage:
     export_agents.py --repo ~/aegis-agents [--openclaw-home ~/.openclaw]
                      [--include-dreams] [--no-push] [--dry-run]
+                     [--owl-agents networker,rodbot] [--owl-all]
 """
 
 import argparse
 import fnmatch
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 MAX_FILE_BYTES = 1_000_000
@@ -201,6 +209,79 @@ def publish(repo, paths):
         print("updated the open export PR")
 
 
+# Keycloak client-credentials login for OWL: a service-account client (owl-exporter) with
+# the owl-mcp client scope. Its submissions are always quarantined.
+OWL_ENV = ("OWL_MCP_URL", "OWL_TOKEN_URL", "OWL_CLIENT_ID", "OWL_CLIENT_SECRET")
+
+
+def owl_token(env):
+    data = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": env["OWL_CLIENT_ID"],
+        "client_secret": env["OWL_CLIENT_SECRET"],
+    }).encode()
+    with urllib.request.urlopen(urllib.request.Request(env["OWL_TOKEN_URL"], data=data), timeout=30) as r:
+        return json.load(r)["access_token"]
+
+
+def owl_call(url, token, tool, arguments):
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                       "params": {"name": tool, "arguments": arguments}}).encode()
+    req = urllib.request.Request(url, data=body, headers={
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": f"Bearer {token}",
+    })
+    with urllib.request.urlopen(req, timeout=120) as r:
+        reply = json.load(r)
+    if "error" in reply:
+        raise RuntimeError(reply["error"])
+    text = reply["result"]["content"][0]["text"]
+    if text.startswith("Error:"):
+        raise RuntimeError(text)
+    return json.loads(text)
+
+
+def origin_slug(repo):
+    url = git(repo, "config", "--get", "remote.origin.url", check=False).stdout.strip()
+    return re.sub(r"^(git@|https://)", "", url).replace("github.com:", "github.com/").removesuffix(".git") or repo.name
+
+
+def submit_to_owl(repo, agents_dir, agents, everything, env, token=None):
+    """Submit changed (or, with everything, all) MEMORY.md files of the given agents.
+
+    The export branch was rebuilt from origin/main, so origin/main..HEAD is exactly what
+    this export changed. Resubmitting unchanged content is harmless: OWL returns the
+    existing job for the same bytes.
+    """
+    rel = agents_dir.relative_to(repo).as_posix()
+    wanted = {f"{rel}/{a}/workspace/MEMORY.md" for a in agents}
+    if everything:
+        paths = sorted(p for p in wanted if (repo / p).is_file())
+    else:
+        changed = git(repo, "diff", "--name-only", "origin/main", "HEAD", "--", *sorted(wanted), check=False)
+        paths = sorted(changed.stdout.split())
+    if not paths:
+        print("owl: no agent memory changed")
+        return
+    commit = git(repo, "rev-parse", "HEAD").stdout.strip()
+    slug = origin_slug(repo)
+    token = token or owl_token(env)
+    for path in paths:
+        agent = path.split("/")[-3]
+        try:
+            job = owl_call(env["OWL_MCP_URL"], token, "submit_document", {
+                "content": (repo / path).read_text(encoding="utf-8"),
+                "title": f"{agent} MEMORY.md",
+                "uri": f"git:{slug}@{commit}:{path}",
+                "media_type": "text/markdown",
+                "source_kind": "agent-memory",
+            })
+            print(f"owl: {agent}: job {job['job_id']} {job['state']}" + (" (already submitted)" if job.get("note") else ""))
+        except Exception as e:  # noqa: BLE001 — one agent failing must not stop the others
+            print(f"owl: {agent}: submit failed: {e}", file=sys.stderr)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", required=True, type=Path, help="local clone of the export repo")
@@ -212,6 +293,10 @@ def main():
     ap.add_argument("--subdir", default="", help="export under this directory of the repo, e.g. 'agents'")
     ap.add_argument("--no-push", action="store_true", help="commit nothing; leave the export in the working tree")
     ap.add_argument("--dry-run", action="store_true", help="write the export to --repo but skip git entirely")
+    ap.add_argument("--owl-agents", default="",
+                    help="comma-separated agent ids whose changed MEMORY.md is submitted to OWL after the push")
+    ap.add_argument("--owl-all", action="store_true",
+                    help="submit those agents' MEMORY.md even if unchanged (initial backfill)")
     args = ap.parse_args()
 
     repo = args.repo.expanduser().resolve()
@@ -272,6 +357,18 @@ def main():
         print(f"export written to {repo} (not committed)")
         return
     publish(repo, [agents_dir, shared_dir])
+
+    owl_agents = [a.strip() for a in args.owl_agents.split(",") if a.strip()]
+    if owl_agents:
+        env = {k: os.environ.get(k, "") for k in OWL_ENV}
+        missing = [k for k, v in env.items() if not v]
+        if missing:
+            print(f"owl: skipped, not configured ({', '.join(missing)} unset)", file=sys.stderr)
+            return
+        try:
+            submit_to_owl(repo, agents_dir, owl_agents, args.owl_all, env)
+        except Exception as e:  # noqa: BLE001 — the git export already succeeded; OWL is best effort
+            print(f"owl: submission failed: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

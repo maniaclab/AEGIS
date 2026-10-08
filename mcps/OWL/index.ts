@@ -16,6 +16,7 @@ import { blobBackend, config } from './config.js';
 import { closePool, dbStatus } from './db/pool.js';
 import { registerStatusTool } from './tools/status.js';
 import { registerReadTools } from './tools/read.js';
+import { registerWriteTools } from './tools/write.js';
 import type { Identity } from './identity.js';
 
 // @ts-expect-error ignore `with` keyword
@@ -37,6 +38,7 @@ export async function createOwlMcpServer(identity?: Identity): Promise<McpServer
     const server = new McpServer(product);
     registerStatusTool(server, identity);
     registerReadTools(server, identity);
+    registerWriteTools(server, identity);
     return server;
 }
 

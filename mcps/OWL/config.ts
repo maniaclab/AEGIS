@@ -36,6 +36,23 @@ export const config = {
         (k): k is string => !!k,
     ),
 
+    /**
+     * Service identities (`svc:<n>`, `svc:kc:<client>`) that may submit, e.g. the agent
+     * memory exporter. A service is never trusted: everything it submits is quarantined.
+     */
+    submitServices: list('OWL_SUBMIT_SERVICES'),
+
+    /** Submissions per identity per hour; trusted writers get ten times this. */
+    rateLimitPerHour: Number(process.env.OWL_RATE_LIMIT_PER_HOUR ?? 30),
+
+    /** Hosts submit_document may fetch from (https only). Everything else is refused. */
+    fetchAllowedHosts: list('OWL_FETCH_ALLOWED_HOSTS').length
+        ? list('OWL_FETCH_ALLOWED_HOSTS')
+        : ['raw.githubusercontent.com', 'gitlab.cern.ch', 'twiki.cern.ch', 'indico.cern.ch'],
+
+    /** CRIC MCP, for anchoring site entities; called with API_KEY_1. Optional. */
+    cricMcpUrl: process.env.OWL_CRIC_MCP_URL,
+
     keycloak: {
         url: process.env.KEYCLOAK_URL,
         realm: process.env.KEYCLOAK_REALM,
@@ -50,7 +67,18 @@ export const config = {
     cheap: {
         baseUrl: process.env.OWL_CHEAP_BASE_URL,
         model: process.env.OWL_MODEL_CHEAP ?? 'nano-30b',
+        /**
+         * Let the model reason before answering. On by default: with Nemotron it extracted
+         * better claims and dropped fewer, and was not slower (shorter answers).
+         */
+        thinking: (process.env.OWL_CHEAP_THINKING ?? 'true') === 'true',
     },
+
+    /**
+     * Which tier extracts and triages novelty. `cheap` by design (high volume); `strong`
+     * trades cost, and sending documents to the hosted provider, for quality.
+     */
+    extractionTier: (process.env.OWL_EXTRACTION_TIER ?? 'cheap') as 'cheap' | 'strong',
 
     /** Rare path: adjudication of scope qualifications and true conflicts. */
     strong: {

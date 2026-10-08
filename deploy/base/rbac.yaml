@@ -341,9 +341,9 @@ roleRef:
 # ──────────────────────────────────────────────────────────────
 # OWL – worker (ingest, sweeps, notifications)
 #
-# No mcp-keys: the worker serves no requests. It does get owl-mattermost, which the
-# front end must not have — nothing that answers HTTP should be able to post to the
-# collaboration's channel.
+# mcp-keys only as a client: it serves no requests, but calls the CRIC MCP to anchor
+# site entities. It also gets owl-mattermost, which the front end must not have —
+# nothing that answers HTTP should be able to post to the collaboration's channel.
 # ──────────────────────────────────────────────────────────────
 ---
 apiVersion: v1
@@ -361,7 +361,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    resourceNames: ["owl-db", "owl-s3", "openai-key", "owl-mattermost"]
+    resourceNames: ["owl-db", "owl-s3", "openai-key", "owl-mattermost", "mcp-keys"]
     verbs: ["get"]
   - apiGroups: [""]
     resources: ["configmaps"]

@@ -63,3 +63,40 @@ systemctl --user enable --now openclaw-export.timer
 
 The host needs `git` with push access to the repo (a deploy key with write access works), and
 `gh` logged in to open the PR. Without `gh` the branch is still pushed.
+
+## Agent memory to OWL (Tier 2)
+
+With `--owl-agents`, each listed agent's `MEMORY.md` that changed in this export is
+submitted to [OWL](../mcps/OWL/README.md) as `agent-memory`, with a `git:` URI pinned to
+the export commit. OWL extracts the facts about systems; they land in quarantine, and a
+trusted writer reviews them with `list_quarantine` / `confirm_claim` / `retire_claim`.
+Failures are printed and never fail the export.
+
+The unit submits every agent except `main` (the general assistant; its memory is mostly
+about its user) and `htcondor` (the AF agent). Edit `--owl-agents` to change that.
+
+OWL credentials come from a Keycloak service-account client, `owl-exporter`, in realm
+`AF-platform`: client authentication on, service accounts on, all other flows off, and the
+`owl-mcp` client scope as a Default scope (it adds the audience OWL checks). Its identity,
+`svc:kc:owl-exporter`, is on OWL's `OWL_SUBMIT_SERVICES`. Keep the secret on the gateway
+host only:
+
+```bash
+mkdir -p ~/.config/aegis-export && chmod 700 ~/.config/aegis-export
+cat > ~/.config/aegis-export/owl.env <<'ENV'
+OWL_MCP_URL=https://owl.af.atlas-ml.org/mcp
+OWL_TOKEN_URL=https://keycloak-prod.tempest.uchicago.edu/realms/AF-platform/protocol/openid-connect/token
+OWL_CLIENT_ID=owl-exporter
+OWL_CLIENT_SECRET=...
+ENV
+chmod 600 ~/.config/aegis-export/owl.env
+```
+
+To submit the current memory once, whether or not it changed (the first time):
+
+```bash
+set -a; . ~/.config/aegis-export/owl.env; set +a
+python3 export_agents.py --repo ~/aegis-agents --owl-agents networker,rodbot,conditioner,ddmbot,scorebot,operator,kubernetes --owl-all
+```
+
+Resubmitting unchanged content is a no-op: OWL returns the existing job.

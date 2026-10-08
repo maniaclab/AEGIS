@@ -33,10 +33,13 @@
     "migrate": "node -e \"import('./dist/db/migrate.js').then(async (m) => { console.log(await m.migrate()); (await import('./dist/db/pool.js')).closePool(); })\"",
     "seed": "node dist/db/seed.js",
     "eval": "node dist/eval/run.js",
+    "reembed": "node dist/db/reembed.js",
+    "reextract": "node dist/db/reextract.js",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
     "test": "npm run build"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1147.0",
     "@modelcontextprotocol/inspector": "^0.21.2",
     "@modelcontextprotocol/sdk": "1.29.0",
     "cors": "^2.8.5",

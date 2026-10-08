@@ -16,16 +16,30 @@ data:
 
   # ── models ─────────────────────────────────────────────────────────────────
   # Cheap, high-volume path — extraction, novelty, pairwise triage — on the local vLLM
-  # running on DGX Spark 1, reached over the tailnet through spark-relay.yaml (the campus
-  # network drops cluster traffic to the Sparks). The worker logs an ERROR at startup if
-  # it cannot reach it.
-  OWL_CHEAP_BASE_URL: "http://spark-relay:8000/v1"
-  OWL_MODEL_CHEAP: "nano-30b"
+  # on DGX Spark 2, reached over the tailnet through spark-relay.yaml (the campus network
+  # drops cluster traffic to the Sparks). The worker logs an ERROR at startup if it
+  # cannot reach it. Qwen3.6 replaced Nemotron (spark-relay:8000, nano-30b) on
+  # 2026-10-07: on agent memory it got subjects and duplicates right where Nemotron did
+  # not, at 2-5x the time per document.
+  OWL_CHEAP_BASE_URL: "http://spark-relay:8001/v1"
+  OWL_MODEL_CHEAP: "qwen3.6-35b"
 
   # Rare path — adjudication of scope qualifications and true conflicts.
   OWL_STRONG_BASE_URL: "https://api.openai.com/v1"
   OWL_MODEL_STRONG: "gpt-5"
 
-  # Baked into the vector(N) column type. Changing it needs `npm run reembed`.
+  # Which tier extracts claims and judges novelty: cheap (vLLM, default) or strong
+  # (hosted; much better claims and duplicate detection, ~$0.20 per memory file, and the
+  # document goes to the provider).
+  OWL_EXTRACTION_TIER: "cheap"
+
+  # ── ingest ─────────────────────────────────────────────────────────────────
+  # Service identities that may submit (always quarantined). svc:kc:owl-exporter is the
+  # Keycloak service-account client the agent-memory exporter on spark-2 logs in with.
+  OWL_SUBMIT_SERVICES: "svc:kc:owl-exporter"
+  # Anchors site entities to CRIC; called in-cluster with API_KEY_1.
+  OWL_CRIC_MCP_URL: "http://mcp-server-cric/mcp"
+
+  # Baked into the halfvec(N) column type. Changing it needs `npm run reembed`.
   OWL_EMBEDDING_MODEL: "text-embedding-3-large"
   OWL_EMBEDDING_DIMENSIONS: "3072"
