@@ -237,9 +237,12 @@ def owl_call(url, token, tool, arguments):
     if "error" in reply:
         raise RuntimeError(reply["error"])
     text = reply["result"]["content"][0]["text"]
-    if text.startswith("Error:"):
-        raise RuntimeError(text)
-    return json.loads(text)
+    if text.startswith("Error:") or reply["result"].get("isError"):
+        raise RuntimeError(text[:300])
+    try:
+        return json.loads(text)
+    except ValueError:
+        raise RuntimeError(f"unexpected reply: {text[:300]}") from None
 
 
 def origin_slug(repo):

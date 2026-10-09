@@ -7,4 +7,6 @@ Type=oneshot
 # OWL_MCP_URL, OWL_TOKEN_URL, OWL_CLIENT_ID, OWL_CLIENT_SECRET; optional ("-"): without it
 # the export still runs and the OWL step is skipped.
 EnvironmentFile=-%h/.config/aegis-export/owl.env
-ExecStart=/usr/bin/python3 %h/AEGIS/agents-export/export_agents.py --repo %h/aegis-agents --owl-agents networker,rodbot,conditioner,ddmbot,scorebot,operator,kubernetes
+# systemd's PATH lacks the npm global bin, so name openclaw explicitly; without it the
+# cron export is skipped.
+ExecStart=/usr/bin/python3 %h/AEGIS/agents-export/export_agents.py --repo %h/aegis-agents --openclaw-bin %h/.npm-global/bin/openclaw --owl-agents networker,rodbot,conditioner,ddmbot,scorebot,operator,kubernetes
