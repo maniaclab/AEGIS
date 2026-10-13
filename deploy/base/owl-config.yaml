@@ -35,8 +35,9 @@ data:
 
   # ── ingest ─────────────────────────────────────────────────────────────────
   # Service identities that may submit (always quarantined). svc:kc:owl-exporter is the
-  # Keycloak service-account client the agent-memory exporter on spark-2 logs in with.
-  OWL_SUBMIT_SERVICES: "svc:kc:owl-exporter"
+  # Keycloak service-account client the agent-memory exporter on spark-2 logs in with;
+  # svc:kc:owl-apprentice is the apprentice agent's client.
+  OWL_SUBMIT_SERVICES: "svc:kc:owl-exporter,svc:kc:owl-apprentice"
   # Anchors site entities to CRIC; called in-cluster with API_KEY_1.
   OWL_CRIC_MCP_URL: "http://mcp-server-cric/mcp"
 
