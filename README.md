@@ -78,7 +78,7 @@ pointing at its OAuth metadata, so OAuth-capable clients find the login page by 
 
 The repository also holds two AF-specific servers, [Executor](mcps/Executor/README.md) (shell
 commands on AF login nodes) and [Knowledge](mcps/Knowledge/README.md) (AF user
-documentation). They serve Elwood and are not deployed from here: their manifests are
+documentation). They serve Shannon and are not deployed from here: their manifests are
 commented out in [`deploy/mcps/kustomization.yaml`](deploy/mcps/kustomization.yaml).
 
 ---
@@ -87,7 +87,7 @@ commented out in [`deploy/mcps/kustomization.yaml`](deploy/mcps/kustomization.ya
 
 The agents run in [OpenClaw](https://openclaw.ai) on a DGX Spark. They use the MCP servers
 above through API keys and talk to people in Slack and Mattermost. The same OpenClaw gateway
-also hosts Elwood's AF agents (an AF orchestrator, HTCondor and Kubernetes); those are not
+also hosts Shannon's AF agents (an AF orchestrator, HTCondor and Kubernetes); those are not
 part of AEGIS. Their reasoning runs on
 Claude, while the two Sparks also serve local models through vLLM: `nano-30b` (NVIDIA
 Nemotron 3 Nano 30B) on Spark 1, and `qwen3.6-35b` on Spark 2.
@@ -122,9 +122,9 @@ Agent state is preserved in three ways:
 
 ---
 
-## OWL — the ATLAS AI Librarian
+## OWL — an AI Librarian for ATLAS
 
-ATLAS documentation is spread over TWiki, GitHub, Indico, slides and mail. Much of it is stale
+ATLAS distributed computing (ADC) documentation is spread over TWiki, GitHub, Indico, slides and mail. Much of it is stale
 or contradicts itself, and retrieval over raw chunks (RAG) cannot fix that at query time. OWL
 moves the work to **write time**. It stores atomic **claims**, each with:
 
