@@ -9,7 +9,7 @@ that watch them, and builds a shared, curated store of operational knowledge.
 
 AEGIS is hosted at UChicago: its services run in the UChicago Analysis Facility (AF)
 Kubernetes cluster and its agents on DGX Sparks in the UChicago network. It is **not** about
-operating the AF, which is a separate project, **Elwood**. AEGIS knows about the AF as one
+operating the AF, which is a separate project, **Shannon**. AEGIS knows about the AF as one
 part of the ATLAS computing infrastructure, but has no AF-specific agents or tools.
 
 AEGIS has four parts:
@@ -186,4 +186,4 @@ adding collaborators, and rechecking MCP authentication.
 
 ## License
 
-[MIT](LICENSE) © 2026 Maniac Lab
+[MIT](LICENSE) © 2026 MANIAC Lab, Enrico Fermi Institute, University of Chicago
