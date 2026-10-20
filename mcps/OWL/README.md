@@ -220,6 +220,7 @@ history, not an answer.
 | `get_job` | State and outcome of a submission. |
 | `list_quarantine` | Claims waiting for a trusted writer, filterable by source kind (e.g. `agent-memory`) and entity. |
 | `confirm_claim` | Trusted writers: confirm quarantined claims, or attest active ones; many at once. |
+| `set_subject` | Re-point claims at an existing entity, a new one, or none (trusted writers, or the owner). Audited. |
 | `retire_claim` | Close claims with a reason (trusted writers, or the owner). Nothing is deleted. |
 
 Planned for Phase 3: `dispute_claim`, and `resolve_dispute` with the four outcomes

@@ -4,6 +4,8 @@ import { runTool } from '../logger.js';
 import { pool } from '../db/pool.js';
 import { checkRateLimit, createJob, finishJob, getJob } from '../db/jobs.js';
 import { resolveClaimId, shapeClaims } from '../db/claims.js';
+import { resolveEntity } from '../db/search.js';
+import { slug } from '../pipeline/entities.js';
 import { analyze, Analysis, jobKey, prepare, sourcePayload } from '../pipeline/ingest.js';
 import { commit, Committer } from '../pipeline/commit.js';
 import { DocumentPayload, summarize } from '../pipeline/run.js';
@@ -235,7 +237,8 @@ export function registerWriteTools(server: McpServer, identity?: Identity): void
             title: 'List quarantine',
             description:
                 'Claims waiting for a trusted writer: submitted by untrusted identities or ' +
-                'extracted from agent memory. Review them, then confirm_claim or retire_claim.',
+                'extracted from agent memory. Review them, fix wrong subjects with set_subject, ' +
+                'then confirm_claim or retire_claim.',
             annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
             inputSchema: {
                 source_kind: z.string().optional().describe('Only claims cited from this kind of source, e.g. agent-memory'),
@@ -305,6 +308,80 @@ export function registerWriteTools(server: McpServer, identity?: Identity): void
                     confirmed, attested: rows.length - confirmed,
                     unchanged: ids.length - rows.length,
                     ...(ids.length > rows.length && { note: 'superseded and retired claims cannot be confirmed' }),
+                });
+            } catch (err) {
+                await client.query('ROLLBACK');
+                throw err;
+            } finally {
+                client.release();
+            }
+        }),
+    );
+
+    server.registerTool(
+        'set_subject',
+        {
+            title: 'Set claim subject',
+            description:
+                'Correct what claims are about: point them at an existing entity (id, name or ' +
+                'alias), at a new entity created here, or at none. For fixing extraction ' +
+                'mistakes during review. Trusted writers, or the claims\' owner.',
+            annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+            inputSchema: {
+                claims: z.array(z.string()).min(1).max(500).describe('Claim uuids or external ids'),
+                subject: z.string().min(1).nullable().optional()
+                    .describe('Existing entity id, name or alias; null to clear the subject'),
+                new_entity: z.object({
+                    name: z.string().min(2),
+                    kind: z.string().regex(/^[a-z][a-z0-9-]*$/).describe('e.g. site, service, host, software'),
+                    id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/).optional().describe('Slug; derived from name if omitted'),
+                    aliases: z.array(z.string().min(2)).optional(),
+                }).optional().describe('Create this entity and use it, instead of subject'),
+            },
+        },
+        async (args) => runTool('set_subject', { ...args, claims: undefined, n: args.claims.length }, async () => {
+            const who = requireSubmit(identity);
+            if ((args.subject !== undefined) === !!args.new_entity) throw new Error('give exactly one of subject or new_entity');
+            const ids = await Promise.all(args.claims.map(resolveClaimId));
+            const target = args.subject ? await resolveEntity(args.subject) : null;
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                let entity = target;
+                if (args.new_entity) {
+                    const e = args.new_entity;
+                    entity = e.id ?? slug(e.name);
+                    const { rowCount } = await client.query(`
+                        INSERT INTO entities (id, kind, name, provisional) VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (id) DO NOTHING`, [entity, e.kind, e.name, !who.trusted]);
+                    if (!rowCount) throw new Error(`entity '${entity}' already exists; pass it as subject`);
+                    for (const a of new Set([entity, e.name, ...(e.aliases ?? [])])) {
+                        await client.query('INSERT INTO entity_aliases (entity_id, alias) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                            [entity, a]);
+                    }
+                    await client.query(`
+                        INSERT INTO audit_log (identity_id, token_id, action, target_kind, target_id, detail)
+                        VALUES ($1, $2, 'entity.create', 'entity', $3, $4)`,
+                        [who.id, who.tokenId ?? null, entity, JSON.stringify(e)]);
+                }
+                const { rows } = await client.query<{ id: string; was: string | null }>(`
+                    UPDATE claims c SET subject_entity_id = $2, updated_at = now()
+                    FROM (SELECT id, subject_entity_id AS was FROM claims WHERE id = ANY($1::uuid[]) FOR UPDATE) old
+                    WHERE c.id = old.id AND c.subject_entity_id IS DISTINCT FROM $2
+                      AND ($3 OR c.owner_identity = $4)
+                    RETURNING c.id, old.was`, [ids, entity, who.trusted, who.username ?? who.id]);
+                for (const r of rows) {
+                    await client.query(`
+                        INSERT INTO audit_log (identity_id, token_id, action, target_kind, target_id, detail)
+                        VALUES ($1, $2, 'claim.subject', 'claim', $3, $4)`,
+                        [who.id, who.tokenId ?? null, r.id, JSON.stringify({ from: r.was, to: entity })]);
+                }
+                await client.query('COMMIT');
+                return json({
+                    subject: entity,
+                    ...(args.new_entity && { entity_created: entity }),
+                    updated: rows.length,
+                    ...(rows.length < ids.length && { unchanged: ids.length - rows.length, note: 'already on that subject, or not yours' }),
                 });
             } catch (err) {
                 await client.query('ROLLBACK');
