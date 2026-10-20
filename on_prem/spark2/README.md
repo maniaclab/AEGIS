@@ -79,5 +79,3 @@ To list secrets:
 openclaw secrets store list
 ```
 
-To use a secret in openclaw.json replace value with eg. "OPENCLAW_GATEWAY_TOKEN".
-
