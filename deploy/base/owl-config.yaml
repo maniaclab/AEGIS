@@ -30,8 +30,8 @@ data:
 
   # Which tier extracts claims and judges novelty: cheap (vLLM, default) or strong
   # (hosted; much better claims and duplicate detection, ~$0.20 per memory file, and the
-  # document goes to the provider).
-  OWL_EXTRACTION_TIER: "cheap"
+  # document goes to the provider). Strong since 2026-10-20: Qwen took 50-110 s per call.
+  OWL_EXTRACTION_TIER: "strong"
 
   # ── ingest ─────────────────────────────────────────────────────────────────
   # Service identities that may submit (always quarantined). svc:kc:owl-exporter is the
