@@ -11,7 +11,7 @@ Kubernetes cluster and is reachable over HTTPS using the MCP **Streamable HTTP**
 | GGUS | Read, create and update GGUS helpdesk tickets | `https://ggus.af.atlas-ml.org/mcp` | [GGUS](GGUS/README.md) |
 | Knowledge | The USATLAS Analysis Facility documentation | `https://knowledge.af.atlas-ml.org/mcp` | [Knowledge](Knowledge/README.md) |
 | Executor | Run shell commands on AF login nodes over SSH | `https://executor.af.atlas-ml.org/mcp` | [Executor](Executor/README.md) |
-| OWL | The ATLAS AI Librarian: curated, cited knowledge (early phase) | `https://owl.af.atlas-ml.org/mcp` | [OWL](OWL/README.md) |
+| OWL | An ATLAS AI Librarian for distributed computing operations: curated, cited knowledge (early phase) | `https://owl.af.atlas-ml.org/mcp` | [OWL](OWL/README.md) |
 | Rucio | ATLAS Rucio: datasets, replicas, rules, RSEs | `https://rucio.af.atlas-ml.org/mcp` | [Rucio](Rucio/README.md) |
 
 Each server's README lists its tools and has copy-paste setup for every client below.
