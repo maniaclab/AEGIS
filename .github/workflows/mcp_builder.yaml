@@ -44,8 +44,8 @@ jobs:
           file: mcps/Elasticsearch/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch,hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch,harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-elasticsearch:latest,ivukotic/mcp-server-elasticsearch:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch,harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-elasticsearch:latest,ivukotic/mcp-server-elasticsearch:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-elasticsearch
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -61,8 +61,8 @@ jobs:
           file: mcps/Executor/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-executor,hub.opensciencegrid.org/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-executor,harbor.af.uchicago.edu/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-executor:latest,ivukotic/mcp-server-executor:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-executor,harbor.af.uchicago.edu/maniaclab/mcp-server-executor:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-executor:latest,ivukotic/mcp-server-executor:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-executor
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -78,8 +78,8 @@ jobs:
           file: mcps/Knowledge/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-knowledge,hub.opensciencegrid.org/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge,harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-knowledge:latest,ivukotic/mcp-server-knowledge:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge,harbor.af.uchicago.edu/maniaclab/mcp-server-knowledge:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-knowledge:latest,ivukotic/mcp-server-knowledge:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-knowledge
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -95,8 +95,8 @@ jobs:
           file: mcps/Rucio/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-rucio,hub.opensciencegrid.org/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-rucio:latest,ivukotic/mcp-server-rucio:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-rucio:latest,ivukotic/mcp-server-rucio:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-rucio
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -111,7 +111,8 @@ jobs:
           context: mcps/Rucio/proxy
           file: mcps/Rucio/proxy/Dockerfile
           push: true
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy:${{ steps.date.outputs.date }},
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy,harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-rucio-proxy:latest,ivukotic/mcp-server-rucio-proxy:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-rucio-proxy
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -127,8 +128,8 @@ jobs:
           file: mcps/CRIC/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-cric,hub.opensciencegrid.org/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-cric,harbor.af.uchicago.edu/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-cric:latest,ivukotic/mcp-server-cric:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-cric,harbor.af.uchicago.edu/maniaclab/mcp-server-cric:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-cric:latest,ivukotic/mcp-server-cric:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-cric
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -144,8 +145,8 @@ jobs:
           file: mcps/GGUS/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-ggus,hub.opensciencegrid.org/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus,harbor.af.uchicago.edu/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-ggus:latest,ivukotic/mcp-server-ggus:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus,harbor.af.uchicago.edu/maniaclab/mcp-server-ggus:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-ggus:latest,ivukotic/mcp-server-ggus:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-ggus
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -162,8 +163,8 @@ jobs:
           file: mcps/OWL/Dockerfile
           push: true
           # tags: hub.opensciencegrid.org/maniaclab/mcp-server-owl,hub.opensciencegrid.org/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
-          tags: harbor.af.uchicago.edu/maniaclab/mcp-server-owl,harbor.af.uchicago.edu/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
-          # tags: "ivukotic/mcp-server-owl:latest,ivukotic/mcp-server-owl:${{ steps.date.outputs.date }}"
+          # tags: harbor.af.uchicago.edu/maniaclab/mcp-server-owl,harbor.af.uchicago.edu/maniaclab/mcp-server-owl:${{ steps.date.outputs.date }},
+          tags: "ivukotic/mcp-server-owl:latest,ivukotic/mcp-server-owl:${{ steps.date.outputs.date }}"
           labels: |
             org.opencontainers.image.title=mcp-server-owl
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
