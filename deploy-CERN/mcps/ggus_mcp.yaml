@@ -60,8 +60,8 @@ spec:
       containers:
         - name: mcp-server-ggus
           # image: hub.opensciencegrid.org/maniaclab/mcp-server-ggus
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus
-          # image: ivukotic/mcp-server-ggus
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-ggus
+          image: ivukotic/mcp-server-ggus
           ports:
             - containerPort: 8000
           envFrom:
@@ -84,14 +84,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
----
-# apiVersion: policy/v1
-# kind: PodDisruptionBudget
-# metadata:
-#   name: mcp-server-ggus
-#   namespace: af-platform
-# spec:
-#   minAvailable: 1
-#   selector:
-#     matchLabels:
-#       app: mcp-server-ggus

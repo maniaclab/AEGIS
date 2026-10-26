@@ -60,7 +60,8 @@ spec:
       containers:
         - name: mcp-server-elasticsearch
           # image: hub.opensciencegrid.org/maniaclab/mcp-server-elasticsearch
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-elasticsearch
+          image: ivukotic/mcp-server-elasticsearch
           ports:
             - containerPort: 3000
           envFrom:
@@ -83,14 +84,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
----
-# apiVersion: policy/v1
-# kind: PodDisruptionBudget
-# metadata:
-#   name: mcp-server-elasticsearch
-#   namespace: aegis
-# spec:
-#   minAvailable: 1
-#   selector:
-#     matchLabels:
-#       app: mcp-server-elasticsearch
