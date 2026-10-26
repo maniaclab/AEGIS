@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - "on_prem/**"
       - "deploy/**"
+      - "deploy-CERN/**"
       - "agents-export/**"
 
 jobs:
