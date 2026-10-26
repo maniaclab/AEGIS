@@ -95,7 +95,8 @@ spec:
         # Checks Keycloak tokens / AF API keys like the other MCPs and forwards to rucio-mcp
         # with its shared secret, so Rucio gets the same OAuth login as everything else.
         - name: rucio-auth-proxy
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy
+          image: ivukotic/mcp-server-rucio-proxy
           ports:
             - containerPort: 8000
           env:
