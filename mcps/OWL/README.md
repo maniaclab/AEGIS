@@ -1,6 +1,6 @@
-# OWL — the ATLAS AI Librarian
+# OWL — an ATLAS AI Librarian
 
-OWL is a curated knowledge service for ATLAS. People and connectors *give* it knowledge;
+OWL is a curated knowledge service for ATLAS Distributed Computing (ADC). People and connectors *give* it knowledge;
 OWL extracts atomic **claims**, checks what it already knows, adjudicates contradictions,
 records provenance and validity, and answers questions with citations.
 
