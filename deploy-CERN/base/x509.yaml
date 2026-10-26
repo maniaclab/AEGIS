@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: x509-secrets-sa
+  namespace: aegis
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: x509-secrets-role
+  namespace: aegis
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: x509-secrets-rolebinding
+  namespace: aegis
+subjects:
+  - kind: ServiceAccount
+    name: x509-secrets-sa
+    namespace: aegis
+roleRef:
+  kind: Role
+  name: x509-secrets-role
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: CronJob
+apiVersion: batch/v1
+metadata:
+  name: x509-secrets
+  namespace: aegis
+spec:
+  schedule: 0 */6 * * *
+  concurrencyPolicy: Allow
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: x509-secrets
+        spec:
+          volumes:
+            - name: grid-secret
+              secret:
+                secretName: grid-certs-secret
+                defaultMode: 420
+            - name: grid-certs-rw-copy
+              emptyDir: {}
+          initContainers:
+            - name: take-data-dir-ownership
+              image: alpine:3.6
+              command:
+                - /bin/sh
+                - "-c"
+              args:
+                - >-
+                  cp /etc/grid-certs-ro/usercert.pem /etc/grid-certs; chmod 600
+                  /etc/grid-certs/usercert.pem; cp
+                  /etc/grid-certs-ro/userkey.pem /etc/grid-certs; chmod 400
+                  /etc/grid-certs/userkey.pem
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              volumeMounts:
+                - name: grid-certs-rw-copy
+                  mountPath: /etc/grid-certs/
+                - name: grid-secret
+                  mountPath: /etc/grid-certs-ro/
+              imagePullPolicy: IfNotPresent
+          containers:
+            - name: x509-secrets
+              image: sslhep/x509-secrets:v1.8.4
+              command:
+                - bash
+                - "-c"
+              args:
+                - python3 x509_updater.py --secret x509-proxy --voms atlas
+              env:
+                - name: MY_POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.name
+                - name: MY_POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              volumeMounts:
+                - name: grid-certs-rw-copy
+                  mountPath: /etc/grid-certs/
+                - name: grid-secret
+                  mountPath: /etc/grid-certs-ro/
+              imagePullPolicy: Always
+          serviceAccountName: x509-secrets-sa
+          restartPolicy: OnFailure
+          terminationGracePeriodSeconds: 30
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
