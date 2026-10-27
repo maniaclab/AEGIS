@@ -4,6 +4,9 @@ resources:
   # namespace
   - ns.yaml
 
+  # gateway cluster issuer for cert-manager
+  - cluster-issuers.yaml
+
   # sealed secrets
   # - mcp-keys-sealed.yaml
   # - mcp-secret-sealed.yaml
