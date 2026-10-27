@@ -1,0 +1,16 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: openai-key
+  namespace: aegis
+spec:
+  encryptedData:
+    OPENAI_API_KEY: AgB7jRUfTVwPo3WUCiqODMJYypMr9A+n8oAWFVBQQr/I2ULbuMmoHAua27lXl1dmMhg5f0o5sTqC5gibwYp9w5/rAkz6YtgVkc5U0LaQ+y08pCK7E2VCBoHRIvQq0ESccW37GuzZcSW3QYhv0Cf4N34dk7p1Oa7DZg8602WqTY0qNzY8NPUAWGIPytjRGmxjY7dIVUDKDMF8av/FenlCNWY7iLwAMhnM5HH2hIaKx1RrKerQw7bf7tDwrI6TJtIiskXW7FLl9yHIjJPvJzT7ur1lGDuXn8Ik/psviQcfhCoaljpexzoZ9WcZ3LuQeCp5Azs+/6/F+76F+eSOM98l5CfZEfF5V+3Rx1FOLh8ZrJ5tA+2esvBvbvqQzBs+KyuB5eg4QrL/CkxmvTG11xApuFL7FzJsoz0uI1wnmb2pJ8kk/G47//w8DZrblOVmMlQ/njRCN+AJ7KSskIXM++wjv9+EdqgUnGW3f54SNAjVAoRXmSMoiegbPyqyCJzttYyBRNwZOG3QnWHcq1h/TTUdQ+dzE2o8WJW9X9jTNyfTiTwlA7fB8BaeaohpJ8CRMkUmOpQS/HBuPtNBBCCrpXrtnYmYQv0EkdpdRtRNvI0xssEyRWMi7ryvX3uWEcVpHtHH4cOoMuU5EL4V4i2DKIKAdvJqnUj7BrqZpZa1JLAlNh5giIAVwtkCrdxqdvawHpy5cuqeUyIYo/9uU8MSqX1FGr7BjhQA8ksEoyImkMQF2GLkAxR0kMlcNaKkAkBZBfo9mWpXwMiRQcbuF18PsS0bqrLtujsdKp3h2hWTto7NSQgUCilIr2/whPVbXM6I4yxyScMi/EU0JjZw7tabo3fhB6WbxRA+utp87dG1x7ImT7v6cJ57KuUAPYwO0ocoGzftjYPGAdMvjnlE2EUlwwMDgXhWYUA6eZa+Sg==
+  template:
+    metadata:
+      creationTimestamp: null
+      name: openai-key
+      namespace: aegis
+    type: Opaque
