@@ -1,5 +1,11 @@
 # TODO
 
+
+* Get a new cluster at CERN OpenStack (no EOS, CVMFS)
+* Get a k8s Gateway on it
+* Rotate the rest of secrets
+* Deploy all the MCPs at CERN
+
 * list all the parts of maniaclab/af-platform repo that need to be moved over here
 * Move things over. Rework actions.
 * change executor MCP to use openclaw node at CERN, or remove it completely

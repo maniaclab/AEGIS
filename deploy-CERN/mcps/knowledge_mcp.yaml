@@ -81,14 +81,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
----
-# apiVersion: policy/v1
-# kind: PodDisruptionBudget
-# metadata:
-#   name: mcp-server-knowledge
-#   namespace: aegis
-# spec:
-#   minAvailable: 1
-#   selector:
-#     matchLabels:
-#       app: mcp-server-knowledge
