@@ -7,6 +7,9 @@ resources:
   # gateway cluster issuer for cert-manager
   - cluster-issuers.yaml
 
+  # network gateway
+  - gateway-1.yaml
+
   # sealed secrets
   # - mcp-keys-sealed.yaml
   # - mcp-secret-sealed.yaml

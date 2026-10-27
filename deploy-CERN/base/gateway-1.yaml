@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: cilium
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-gw
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      hostname: aegis.cern.ch
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      hostname: aegis.cern.ch
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: redirect-example
