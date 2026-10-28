@@ -92,14 +92,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
----
-# apiVersion: policy/v1
-# kind: PodDisruptionBudget
-# metadata:
-#   name: mcp-server-cric
-#   namespace: af-platform
-# spec:
-#   minAvailable: 1
-#   selector:
-#     matchLabels:
-#       app: mcp-server-cric
