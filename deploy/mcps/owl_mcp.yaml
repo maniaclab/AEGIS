@@ -68,7 +68,8 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mcp-server-owl
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-owl
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-owl
+          image: ivukotic/mcp-server-owl
           ports:
             - containerPort: 8000
           env:
@@ -136,7 +137,8 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: owl-worker
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-owl
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-owl
+          image: ivukotic/mcp-server-owl
           env:
             - name: OWL_MODE
               value: worker
@@ -162,14 +164,3 @@ spec:
               # on large PDFs rather than lowering the batch size first.
               memory: "2Gi"
               cpu: "2"
----
-# apiVersion: policy/v1
-# kind: PodDisruptionBudget
-# metadata:
-#   name: mcp-server-owl
-#   namespace: aegis
-# spec:
-#   minAvailable: 1
-#   selector:
-#     matchLabels:
-#       app: mcp-server-owl

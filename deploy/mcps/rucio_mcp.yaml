@@ -69,8 +69,8 @@ spec:
       containers:
         - name: mcp-server-rucio
           # image: hub.opensciencegrid.org/maniaclab/mcp-server-rucio
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio
-          # image: ivukotic/mcp-server-rucio
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio
+          image: ivukotic/mcp-server-rucio
           # command: ["sh", "-c", "echo Hello Rucio! && sleep 3600"]
           # Listens on 127.0.0.1:8001 only; reached through the rucio-auth-proxy container below.
           env:
@@ -95,7 +95,8 @@ spec:
         # Checks Keycloak tokens / AF API keys like the other MCPs and forwards to rucio-mcp
         # with its shared secret, so Rucio gets the same OAuth login as everything else.
         - name: rucio-auth-proxy
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-rucio-proxy
+          image: ivukotic/mcp-server-rucio-proxy
           ports:
             - containerPort: 8000
           env:
@@ -123,14 +124,3 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
----
-# apiVersion: policy/v1
-# kind: PodDisruptionBudget
-# metadata:
-#   name: mcp-server-rucio
-#   namespace: af-platform
-# spec:
-#   minAvailable: 1
-#   selector:
-#     matchLabels:
-#       app: mcp-server-rucio
