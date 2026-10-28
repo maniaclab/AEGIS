@@ -4,6 +4,6 @@ metadata:
   name: keycloak-config
   namespace: aegis
 data:
-  KEYCLOAK_URL: "https://auth.af.uchicago.edu/"
+  KEYCLOAK_URL: "https://auth.af.uchicago.edu"
   KEYCLOAK_REALM: "AF-platform"
   KEYCLOAK_AUDIENCE: "executor-mcp"
