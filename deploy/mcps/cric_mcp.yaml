@@ -65,8 +65,8 @@ spec:
       containers:
         - name: mcp-server-cric
           # image: hub.opensciencegrid.org/maniaclab/mcp-server-cric
-          image: harbor.af.uchicago.edu/maniaclab/mcp-server-cric
-          # image: ivukotic/mcp-server-cric
+          # image: harbor.af.uchicago.edu/maniaclab/mcp-server-cric
+          image: ivukotic/mcp-server-cric
           # command: ["sh", "-c", "echo Hello cric! && sleep 3600"]
           ports:
             - containerPort: 8000
