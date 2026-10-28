@@ -11,7 +11,7 @@ resources:
   - gateway-1.yaml
 
   # sealed secrets
-  # - mcp-keys-sealed.yaml
+  - mcp-keys-sealed.yaml
   # - mcp-secret-sealed.yaml
   # - es-secret-sealed.yaml
   - openai-token-sealed.yaml
