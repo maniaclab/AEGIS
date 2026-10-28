@@ -13,12 +13,12 @@ resources:
   # sealed secrets
   - mcp-keys-sealed.yaml
   # - mcp-secret-sealed.yaml
-  # - es-secret-sealed.yaml
+  - es-secret-sealed.yaml
   - openai-token-sealed.yaml
   - grid-certs-secret-sealed.yaml
   # - rucio-mcp-token-sealed.yaml
   - ggus-token-sealed.yaml
-  # - owl-secrets-sealed.yaml
+  - owl-secrets-sealed.yaml
   # - spark-relay-sealed.yaml
 
   # x509 proxy renewal
