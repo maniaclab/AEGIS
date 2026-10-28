@@ -11,33 +11,23 @@ spec:
       port: 80
       targetPort: 8000
   type: ClusterIP
-# ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: rucio-mcp
-#   namespace: aegis
-#   labels:
-#     k8s-app: rucio-mcp
-#   annotations:
-#     cert-manager.io/cluster-issuer: letsencrypt-prod
-# spec:
-#   ingressClassName: nginx
-#   tls:
-#     - hosts:
-#         - rucio.af.atlas-ml.org
-#       secretName: letsencrypt-generated-rucio-mcp
-#   rules:
-#     - host: rucio.af.atlas-ml.org
-#       http:
-#         paths:
-#           - path: /
-#             pathType: Prefix
-#             backend:
-#               service:
-#                 name: mcp-server-rucio
-#                 port:
-#                   number: 80
+---
+# Exposes the server at https://aegis-rucio.cern.ch/mcp through the cilium Gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: rucio-mcp
+  namespace: aegis
+spec:
+  parentRefs:
+    - name: cilium
+      sectionName: https-rucio
+  hostnames:
+    - aegis-rucio.cern.ch
+  rules:
+    - backendRefs:
+        - name: mcp-server-rucio
+          port: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -105,7 +95,7 @@ spec:
             - name: KEYCLOAK_AUDIENCE
               value: rucio-mcp
             - name: MCP_RESOURCE_URL
-              value: https://rucio.af.atlas-ml.org/mcp
+              value: https://aegis-rucio.cern.ch/mcp
           envFrom:
             - secretRef:
                 name: mcp-keys

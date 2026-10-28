@@ -12,33 +12,6 @@ spec:
       targetPort: 8000
   type: ClusterIP
 ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: cric-mcp
-#   namespace: aegis
-#   labels:
-#     k8s-app: cric-mcp
-#   annotations:
-#     cert-manager.io/cluster-issuer: letsencrypt-prod
-# spec:
-#   ingressClassName: nginx
-#   tls:
-#     - hosts:
-#         - cric.af.atlas-ml.org
-#       secretName: letsencrypt-generated-cric-mcp
-#   rules:
-#     - host: cric.af.atlas-ml.org
-#       http:
-#         paths:
-#           - path: /
-#             pathType: Prefix
-#             backend:
-#               service:
-#                 name: mcp-server-cric
-#                 port:
-#                   number: 80
----
 # Exposes the server at https://aegis-cric.cern.ch/mcp through the cilium Gateway.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

@@ -11,33 +11,23 @@ spec:
       port: 80
       targetPort: 3000
   type: ClusterIP
-# ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: es-mcp
-#   namespace: aegis
-#   labels:
-#     k8s-app: es-mcp
-#   annotations:
-#     cert-manager.io/cluster-issuer: letsencrypt-prod
-# spec:
-#   ingressClassName: nginx
-#   tls:
-#     - hosts:
-#         - es.af.atlas-ml.org
-#       secretName: letsencrypt-generated-es-mcp
-#   rules:
-#     - host: es.af.atlas-ml.org
-#       http:
-#         paths:
-#           - path: /
-#             pathType: Prefix
-#             backend:
-#               service:
-#                 name: mcp-server-elasticsearch
-#                 port:
-#                   number: 80
+---
+# Exposes the server at https://aegis-es.cern.ch/mcp through the cilium Gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: es-mcp
+  namespace: aegis
+spec:
+  parentRefs:
+    - name: cilium
+      sectionName: https-es
+  hostnames:
+    - aegis-es.cern.ch
+  rules:
+    - backendRefs:
+        - name: mcp-server-elasticsearch
+          port: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -76,7 +66,7 @@ spec:
             - name: KEYCLOAK_AUDIENCE
               value: es-mcp
             - name: MCP_RESOURCE_URL
-              value: https://es.af.atlas-ml.org/mcp
+              value: https://aegis-es.cern.ch/mcp
           resources:
             requests:
               memory: "256Mi"

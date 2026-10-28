@@ -26,3 +26,47 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: aegis-cric-tls
+    - name: https-es
+      hostname: aegis-es.cern.ch
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: aegis-es-tls
+    - name: https-ggus
+      hostname: aegis-ggus.cern.ch
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: aegis-ggus-tls
+    - name: https-owl
+      hostname: aegis-owl.cern.ch
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: aegis-owl-tls
+    - name: https-rucio
+      hostname: aegis-rucio.cern.ch
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: aegis-rucio-tls
