@@ -28,7 +28,7 @@ resources:
   - rbac.yaml
 
   # configmaps
-  # - keycloak.yaml
+  - keycloak.yaml
   - rucio-config.yaml
   - owl-config.yaml
 
