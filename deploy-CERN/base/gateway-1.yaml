@@ -7,8 +7,9 @@ metadata:
 spec:
   gatewayClassName: cilium
   listeners:
+    # No hostname: one plain-HTTP listener serves cert-manager's HTTP01
+    # challenges for every hostname below.
     - name: http
-      hostname: aegis.cern.ch
       protocol: HTTP
       port: 80
       allowedRoutes:
@@ -25,3 +26,14 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: redirect-example
+    - name: https-cric
+      hostname: aegis-cric.cern.ch
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: aegis-cric-tls

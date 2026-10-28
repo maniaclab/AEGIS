@@ -20,33 +20,33 @@ spec:
       port: 80
       targetPort: 8000
   type: ClusterIP
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: owl-mcp
-  namespace: aegis
-  labels:
-    k8s-app: owl-mcp
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - owl.af.atlas-ml.org
-      secretName: letsencrypt-generated-owl-mcp
-  rules:
-    - host: owl.af.atlas-ml.org
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: mcp-server-owl
-                port:
-                  number: 80
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: owl-mcp
+#   namespace: aegis
+#   labels:
+#     k8s-app: owl-mcp
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+# spec:
+#   ingressClassName: nginx
+#   tls:
+#     - hosts:
+#         - owl.af.atlas-ml.org
+#       secretName: letsencrypt-generated-owl-mcp
+#   rules:
+#     - host: owl.af.atlas-ml.org
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: mcp-server-owl
+#                 port:
+#                   number: 80
 ---
 apiVersion: apps/v1
 kind: Deployment

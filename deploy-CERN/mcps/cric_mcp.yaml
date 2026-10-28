@@ -12,32 +12,49 @@ spec:
       targetPort: 8000
   type: ClusterIP
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: cric-mcp
+#   namespace: aegis
+#   labels:
+#     k8s-app: cric-mcp
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+# spec:
+#   ingressClassName: nginx
+#   tls:
+#     - hosts:
+#         - cric.af.atlas-ml.org
+#       secretName: letsencrypt-generated-cric-mcp
+#   rules:
+#     - host: cric.af.atlas-ml.org
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: mcp-server-cric
+#                 port:
+#                   number: 80
+---
+# Exposes the server at https://aegis-cric.cern.ch/mcp through the cilium Gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: cric-mcp
   namespace: aegis
-  labels:
-    k8s-app: cric-mcp
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - cric.af.atlas-ml.org
-      secretName: letsencrypt-generated-cric-mcp
+  parentRefs:
+    - name: cilium
+      sectionName: https-cric
+  hostnames:
+    - aegis-cric.cern.ch
   rules:
-    - host: cric.af.atlas-ml.org
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: mcp-server-cric
-                port:
-                  number: 80
+    - backendRefs:
+        - name: mcp-server-cric
+          port: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -80,7 +97,7 @@ spec:
             - name: KEYCLOAK_AUDIENCE
               value: cric-mcp
             - name: MCP_RESOURCE_URL
-              value: https://cric.af.atlas-ml.org/mcp
+              value: https://aegis-cric.cern.ch/mcp
           volumeMounts:
             - name: x509-secret
               readOnly: true

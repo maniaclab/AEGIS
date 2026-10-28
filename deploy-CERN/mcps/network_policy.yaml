@@ -26,3 +26,19 @@ spec:
     # be locked down.
     - from:
         - podSelector: {}
+---
+# Traffic from the cilium Gateway carries Cilium's reserved "ingress" identity,
+# which the plain NetworkPolicy above cannot select. Policies are additive, so
+# this only opens the MCP pods to the Gateway's Envoy.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: mcp-servers-from-gateway
+  namespace: aegis
+spec:
+  endpointSelector:
+    matchLabels:
+      role: mcp-server
+  ingress:
+    - fromEntities:
+        - ingress

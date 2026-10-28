@@ -15,7 +15,7 @@ spec:
           gatewayHTTPRoute:
             parentRefs:
               - name: cilium
-                namespace: kube-system
+                namespace: aegis
                 kind: Gateway
 ---
 apiVersion: cert-manager.io/v1
@@ -34,5 +34,5 @@ spec:
           gatewayHTTPRoute:
             parentRefs:
               - name: cilium
-                namespace: kube-system
+                namespace: aegis
                 kind: Gateway
