@@ -15,17 +15,6 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    - name: https
-      hostname: aegis.cern.ch
-      protocol: HTTPS
-      port: 443
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: redirect-example
     - name: https-cric
       hostname: aegis-cric.cern.ch
       protocol: HTTPS
