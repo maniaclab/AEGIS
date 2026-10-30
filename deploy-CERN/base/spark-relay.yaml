@@ -111,7 +111,7 @@ spec:
             - name: TS_SOCKS5_SERVER
               value: "127.0.0.1:1055"
             - name: TS_HOSTNAME
-              value: af-spark-relay
+              value: af-spark-relay-cern-aegis
             - name: TS_ACCEPT_DNS
               value: "false"
             - name: POD_NAME

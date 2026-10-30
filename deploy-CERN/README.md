@@ -1,10 +1,10 @@
 # Deployment of AEGIS k8s resources
 
-Deployed on AF UC cluster.
+Deployed on the ATLAS Analytics Kubernetes cluster at CERN OpenStack (namespace `aegis`).
+The UChicago AF deployment lives in [`../deploy/`](../deploy/) and is separate; keep changes in sync by hand where both need them.
+Sealed secrets are encrypted per cluster, so a `*-sealed.yaml` from `deploy/` will not decrypt here (and vice versa).
 All deployments have 1 replica and no PodDisruptionBudget.
 Images are tagged `latest` and with the build date (`YYYY-MM-DD`); the commit SHA is recorded in the `org.opencontainers.image.revision` label. Deployments use date tags.
-
-Deployed at ATLAS Analytics cluster at CERN OpenStack.
 
 Cluster management tips:
 

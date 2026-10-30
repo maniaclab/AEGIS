@@ -148,8 +148,8 @@ build plan.
 
 | | |
 | --- | --- |
-| Cluster | UChicago AF Kubernetes (hosting only), namespace `aegis` |
-| Delivery | Flux watches `main` of this repository and applies [`deploy/`](deploy/) (Kustomize: `base/` for namespace, secrets, RBAC, config, Postgres and the Spark relay; `mcps/` for the servers and network policy). **Pushing to `main` deploys.** |
+| Clusters | Two separate deployments, both in namespace `aegis`: [`deploy/`](deploy/) on the UChicago AF Kubernetes cluster (hosting only), and [`deploy-CERN/`](deploy-CERN/) on the ATLAS Analytics cluster at CERN OpenStack. Sealed secrets are encrypted per cluster, so each directory has its own `*-sealed.yaml` files |
+| Delivery | On the UChicago AF cluster, Flux watches `main` of this repository and applies [`deploy/`](deploy/) (Kustomize: `base/` for namespace, secrets, RBAC, config, Postgres and the Spark relay; `mcps/` for the servers and network policy). **Pushing to `main` deploys.** |
 | Images | Built by [`.github/workflows/mcp_builder.yaml`](.github/workflows/mcp_builder.yaml) on push to `main` and pushed to `harbor.af.uchicago.edu/maniaclab/mcp-server-<name>`, tagged with the date and `latest` |
 | Ingress | `<name>.af.atlas-ml.org`, nginx with cert-manager |
 | Secrets | SealedSecrets only: `kubeseal --controller-name sealed-secrets --controller-namespace kube-system --format yaml` |
@@ -164,9 +164,10 @@ build plan.
 ```text
 mcps/            MCP servers, one directory each (TypeScript, Express, MCP SDK)
   OWL/           the AI Librarian (service, worker, design docs, build plan)
-deploy/          Kustomize manifests applied by Flux
+deploy/          Kustomize manifests applied by Flux on the UChicago AF cluster
   base/          namespace, sealed secrets, RBAC, ConfigMaps, OWL Postgres, spark-relay
   mcps/          MCP Deployments, Services, Ingresses, NetworkPolicy
+deploy-CERN/     the same layout for the CERN OpenStack cluster (adds Gateway API and cluster issuers)
 agents-export/   exporter of OpenClaw agent state to git, plus its systemd units
 on_prem/spark2/  DGX Spark setup: vLLM docker compose, OpenClaw notes
 .github/         image build workflow, CODEOWNERS
