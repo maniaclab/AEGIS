@@ -105,11 +105,12 @@ spec:
     - metadata:
         name: data
       spec:
-        # accessModes: ["ReadWriteOnce"]
+        accessModes: ["ReadWriteOnce"]
         # volumeClaimTemplates are immutable — changing this means deleting the
         # StatefulSet and its PVC.
-        # Manila quota for the project is 10 GB / 1 share; raise it before growing this.
-        storageClassName: standard
+        # No Cinder CSI on this cluster, so Manila CephFS only. Project quota is
+        # 10 GB / 1 share; raise it before growing this.
+        storageClassName: meyrin-cephfs
         resources:
           requests:
-            storage: 50Gi
+            storage: 10Gi
