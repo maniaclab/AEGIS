@@ -112,4 +112,4 @@ spec:
         storageClassName: meyrin-cephfs
         resources:
           requests:
-            storage: 50Gi
+            storage: 40Gi
