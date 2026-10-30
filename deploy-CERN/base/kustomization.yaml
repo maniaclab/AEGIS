@@ -16,7 +16,7 @@ resources:
   - es-secret-sealed.yaml
   - openai-token-sealed.yaml
   - grid-certs-secret-sealed.yaml
-  # - rucio-mcp-token-sealed.yaml
+  - rucio-mcp-token-sealed.yaml
   - ggus-token-sealed.yaml
   - owl-secrets-sealed.yaml
   # - spark-relay-sealed.yaml
