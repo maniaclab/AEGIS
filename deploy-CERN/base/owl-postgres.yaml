@@ -105,11 +105,11 @@ spec:
     - metadata:
         name: data
       spec:
-        accessModes: ["ReadWriteOnce"]
-        # Block storage: Postgres wants a local filesystem, not a shared one (CephFS).
+        # accessModes: ["ReadWriteOnce"]
         # volumeClaimTemplates are immutable — changing this means deleting the
         # StatefulSet and its PVC.
-        storageClassName: meyrin-cephfs
+        # Manila quota for the project is 10 GB / 1 share; raise it before growing this.
+        storageClassName: standard
         resources:
           requests:
-            storage: 40Gi
+            storage: 50Gi
