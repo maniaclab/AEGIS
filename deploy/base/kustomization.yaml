@@ -5,7 +5,6 @@ resources:
   - ns.yaml
 
   # sealed secrets
-  - af-ssh-key-sealed.yaml
   - mcp-keys-sealed.yaml
   - mcp-secret-sealed.yaml
   - es-secret-sealed.yaml
