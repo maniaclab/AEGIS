@@ -30,6 +30,15 @@ const product = {
     version: pkg.version,
 };
 
+// Sent to clients at initialize: how to use these tools together.
+const instructions = [
+    "Runs shell commands on Analysis Facility login nodes over SSH as the shared 'assistant' account.",
+    "One tool: execute_shell_command. Both arguments are required: shellCommand (the command) and loginNode (hostname of the login node).",
+    "Each call is a fresh, non-interactive SSH session: no stdin, and no shell, working directory or environment carried between calls.",
+    "The connection times out after 30 s and a command after 120 s; run long work in the background or through the batch system and poll it.",
+    "The result has separate STDIO and STDERR parts; check both.",
+].join(" ");
+
 
 const SSH_TIMEOUT_MS = 30_000;
 const COMMAND_TIMEOUT_MS = 120_000;
@@ -85,7 +94,7 @@ function sshLogin(host: string, command: string): Promise<{ stdout: string, stde
 
 export async function createExecutorMcpServer(): Promise<McpServer> {
 
-    const server = new McpServer(product);
+    const server = new McpServer(product, { instructions });
 
     // Tool 1: Execute shell command on remote server via SSH
     server.registerTool(

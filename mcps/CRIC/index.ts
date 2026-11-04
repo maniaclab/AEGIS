@@ -23,10 +23,18 @@ const product = {
     version: pkg.version,
 };
 
+// Sent to clients at initialize: how to use these tools together.
+const instructions = [
+    "Read-only access to ATLAS site and queue configuration in CRIC.",
+    "Tools: list_rc_sites (sites), list_panda_queues and list_queue_statuses (PanDA queues and their state), list_panda_queue_tags, list_ddm_endpoints and list_ddm_endpoint_statuses (storage endpoints).",
+    "All filters are optional, but pass one where you can: unfiltered lists are large.",
+    "Names are CRIC names: an RC site (e.g. MWT2) owns PanDA queues and DDM endpoints, which have their own names (e.g. MWT2_UCORE, MWT2_DATADISK).",
+].join(" ");
+
 
 export async function createCricMcpServer(): Promise<McpServer> {
 
-    const server = new McpServer(product);
+    const server = new McpServer(product, { instructions });
 
     server.registerTool(
         "list_rc_sites",

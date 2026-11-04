@@ -28,6 +28,13 @@ const product = {
     version: pkg.version,
 };
 
+// Sent to clients at initialize: how to use these tools together.
+const instructions = [
+    'Serves ATLAS distributed computing documentation as Markdown resources with knowledge:// URIs.',
+    'Tools: list_resources returns every URI; get_resource fetches one by URI.',
+    'Call list_resources first and pick documents by path; do not guess URIs.',
+].join(' ');
+
 
 function getAllMarkdownFiles(dir: string): string[] {
     const results: string[] = [];
@@ -50,7 +57,7 @@ function getAllMarkdownFiles(dir: string): string[] {
 
 export async function createKnowledgeMcpServer(): Promise<McpServer> {
 
-    const server = new McpServer(product);
+    const server = new McpServer(product, { instructions });
 
     const mdFiles = getAllMarkdownFiles(ADC_DIR);
     log.debug(`Found ${mdFiles.length} Markdown file(s) in ${ADC_DIR}`);

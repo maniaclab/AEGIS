@@ -19,6 +19,15 @@ const product = {
     version: pkg.version,
 };
 
+// Sent to clients at initialize: how to use these tools together.
+const instructions = [
+    "Access to the GGUS (WLCG helpdesk) ticket system.",
+    "Read tools: list_my_tickets, list_tickets (filter by state, group, area, wlcg_sites, vo_support), get_ticket, get_ticket_articles.",
+    "Write tools: create_ticket, add_comment, update_ticket_state. Their effects are visible to site admins and the wider community; confirm with the user before using them.",
+    "Each ticket has an internal 'id' and a 'number' (the GGUS ticket number people quote). get_ticket, get_ticket_articles, add_comment and update_ticket_state all take the internal id; get it from the list tools.",
+    "Ticket content and comments come from get_ticket_articles, not get_ticket.",
+].join(" ");
+
 const GGUS_BASE = 'https://helpdesk.ggus.eu';
 const MY_USER_ID = 1094;
 
@@ -57,7 +66,7 @@ async function ggusPut(path: string, body: unknown): Promise<unknown> {
 
 export async function createGgusMcpServer(): Promise<McpServer> {
 
-    const server = new McpServer(product);
+    const server = new McpServer(product, { instructions });
 
     server.registerTool(
         "list_my_tickets",

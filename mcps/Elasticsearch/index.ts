@@ -30,6 +30,15 @@ const product = {
     version: pkg.version,
 };
 
+// Sent to clients at initialize: how to use these tools together.
+const instructions = [
+    "Read-only access to the UChicago Analysis Facility Elasticsearch cluster.",
+    "Tools: list_indices, get_mappings, search. There is no describe or msearch tool.",
+    "Workflow: find indices with list_indices (indexPattern, e.g. 'ps_*'), check field names and types with get_mappings, then call search with index and queryBody, a Query DSL object such as {query, size, aggs, sort, _source}.",
+    "search returns the full Elasticsearch response: keep size small, select fields with _source, and prefer aggregations (size: 0) over pulling raw documents from large indices.",
+    "Aggregate on keyword fields, and filter on a time range wherever the index has a timestamp.",
+].join(" ");
+
 // Prepend a path prefix to every request path
 class CustomTransport extends Transport {
     private readonly pathPrefix: string;
@@ -157,18 +166,27 @@ export async function createElasticsearchMcpServer(
 
     const esClient = new Client(clientOptions);
 
-    const server = new McpServer(product);
+    const server = new McpServer(product, { instructions });
 
     // Tool 1: List indices
-    server.tool(
+    server.registerTool(
         "list_indices",
-        "List all available Elasticsearch indices",
         {
-            indexPattern: z
-                .string()
-                .trim()
-                .min(1, "Index pattern is required")
-                .describe("Index pattern of Elasticsearch indices to list"),
+            title: "List Indices",
+            description: "List all available Elasticsearch indices",
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
+            inputSchema: {
+                indexPattern: z
+                    .string()
+                    .trim()
+                    .min(1, "Index pattern is required")
+                    .describe("Index pattern of Elasticsearch indices to list"),
+            },
         },
         async ({ indexPattern }) => withToolLog("list_indices", { indexPattern }, async () => {
             try {
@@ -212,15 +230,24 @@ export async function createElasticsearchMcpServer(
     );
 
     // Tool 2: Get mappings for an index
-    server.tool(
+    server.registerTool(
         "get_mappings",
-        "Get field mappings for a specific Elasticsearch index",
         {
-            index: z
-                .string()
-                .trim()
-                .min(1, "Index name is required")
-                .describe("Name of the Elasticsearch index to get mappings for"),
+            title: "Get Mappings",
+            description: "Get field mappings for a specific Elasticsearch index",
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
+            inputSchema: {
+                index: z
+                    .string()
+                    .trim()
+                    .min(1, "Index name is required")
+                    .describe("Name of the Elasticsearch index to get mappings for"),
+            },
         },
         async ({ index }) => withToolLog("get_mappings", { index }, async () => {
             try {
@@ -256,33 +283,42 @@ export async function createElasticsearchMcpServer(
     );
 
     // Tool 3: Search an index
-    server.tool(
+    server.registerTool(
         "search",
-        "Perform an Elasticsearch search with the provided query DSL. Parameters: index(string) and queryBody(object) are mandatory parameters.",
         {
-            index: z
-                .string()
-                .trim()
-                .min(1, "Index name is required")
-                .describe("Name of the Elasticsearch index to search"),
-            queryBody: z
-                .record(z.any())
-                .describe(
-                    "DSL query that can include query, size, from, etc"
-                )
-                .refine(
-                    (val) => {
-                        try {
-                            JSON.parse(JSON.stringify(val));
-                            return true;
-                        } catch (e) {
-                            return false;
+            title: "Search",
+            description: "Perform an Elasticsearch search with the provided query DSL. Parameters: index(string) and queryBody(object) are mandatory parameters.",
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
+            inputSchema: {
+                index: z
+                    .string()
+                    .trim()
+                    .min(1, "Index name is required")
+                    .describe("Name of the Elasticsearch index to search"),
+                queryBody: z
+                    .record(z.any())
+                    .describe(
+                        "DSL query that can include query, size, from, etc"
+                    )
+                    .refine(
+                        (val) => {
+                            try {
+                                JSON.parse(JSON.stringify(val));
+                                return true;
+                            } catch (e) {
+                                return false;
+                            }
+                        },
+                        {
+                            message: "queryBody must be a valid Elasticsearch query DSL object",
                         }
-                    },
-                    {
-                        message: "queryBody must be a valid Elasticsearch query DSL object",
-                    }
-                ),
+                    ),
+            },
         },
         async ({ index, queryBody }) => withToolLog("search", { index, queryBody }, async () => {
             try {

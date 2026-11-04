@@ -27,6 +27,15 @@ const product = {
     version: pkg.version,
 };
 
+// Sent to clients at initialize: how to use these tools together.
+const instructions = [
+    'OWL is a curated knowledge base of atomic, cited claims about ATLAS systems, sites and services.',
+    'Read: search_knowledge (a natural-language question; start here), get_claim, traverse_entity (everything about one entity), get_timeline (how it changed), list_disputes, fetch_source (the cited spans). owl_status reports health and how you are identified.',
+    'Always relay warnings: a claim flagged superseded, disputed, unconfirmed or stale is not settled fact.',
+    'Write: submit_knowledge only previews claims and stores nothing; show them to the user, then call confirm_submission with the returned handle. submit_document queues a whole document; poll get_job.',
+    'Review (trusted writers): list_quarantine, then set_subject, confirm_claim or retire_claim.',
+].join(' ');
+
 /**
  * A fresh server per request, carrying the caller's identity.
  *
@@ -35,7 +44,7 @@ const product = {
  * between callers.
  */
 export async function createOwlMcpServer(identity?: Identity): Promise<McpServer> {
-    const server = new McpServer(product);
+    const server = new McpServer(product, { instructions });
     registerStatusTool(server, identity);
     registerReadTools(server, identity);
     registerWriteTools(server, identity);
