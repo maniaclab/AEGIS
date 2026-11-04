@@ -235,7 +235,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
         "list_ddm_endpoint_statuses",
         {
             title: "List DDM Endpoint Statuses",
-            description: "List ATLAS DDM endpoint statuses from CRIC, optionally filtered by site or endpoint status.",
+            description: "List ATLAS DDM endpoint statuses from CRIC, optionally filtered by endpoint name or endpoint state ('ACTIVE', 'INACTIVE', 'DISABLED', 'DELETED', 'ANY').",
             annotations: {
                 readOnlyHint: true,
                 destructiveHint: false,
@@ -248,9 +248,13 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     .trim()
                     .optional()
                     .describe("Filter by DDM endpoint name (e.g. 'AGLT2_DATADISK')."),
+                state: z
+                    .enum(['ACTIVE', 'INACTIVE', 'DISABLED', 'DELETED', 'ANY'])
+                    .optional()
+                    .describe("Filter endpoints by state."),
             }
         },
-        async ({ ddmendpoint }) => withToolLog("list_ddm_endpoint_statuses", { ddmendpoint }, async () => {
+        async ({ ddmendpoint, state }) => withToolLog("list_ddm_endpoint_statuses", { ddmendpoint, state }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -290,6 +294,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
 
             const params = new URLSearchParams({ json: '' });
             if (ddmendpoint) params.set('ddmendpoint', ddmendpoint);
+            if (state) params.set('state', state);
             const url = `https://atlas-cric.cern.ch/api/atlas/ddmendpointstatus/query/?${params}`;
 
             const started = process.hrtime.bigint();
