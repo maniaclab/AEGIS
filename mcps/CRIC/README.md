@@ -21,6 +21,7 @@ everything, which can be large.
 | `list_panda_queues` | PanDA queues and their configuration | `name` (e.g. `AGLT2_TEST`), `state`, `status` |
 | `list_queue_statuses` | Current PanDA queue statuses | `pandaqueue`, `state` (`ACTIVE`, `INACTIVE`, `DISABLED`, `DELETED`, `ANY`), `status` (`TEST`, `ONLINE`, `OFFLINE`) |
 | `list_panda_queue_tags` | Tags attached to PanDA queues | `panda_queue` |
+| `list_ddm_endpoints` | DDM endpoints (storage) and their configuration | `name` (e.g. `AGLT2_DATADISK`), `site` (e.g. `AGLT2`) |
 | `list_ddm_endpoint_statuses` | DDM endpoint (storage) statuses | `ddmendpoint` (e.g. `AGLT2_DATADISK`) |
 
 ## Connect

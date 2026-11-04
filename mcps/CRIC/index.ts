@@ -310,6 +310,98 @@ export async function createCricMcpServer(): Promise<McpServer> {
     );
 
     server.registerTool(
+        "list_ddm_endpoints",
+        {
+            title: "List DDM Endpoints",
+            description: "List ATLAS DDM (storage) endpoints from CRIC, optionally filtered by endpoint name or site.",
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
+            inputSchema: {
+                name: z
+                    .string()
+                    .trim()
+                    .optional()
+                    .describe("Filter by DDM endpoint name (e.g. 'AGLT2_DATADISK')."),
+                site: z
+                    .string()
+                    .trim()
+                    .optional()
+                    .describe("Filter by the ATLAS site the endpoint belongs to (e.g. 'AGLT2')."),
+            }
+        },
+        async ({ name, site }) => withToolLog("list_ddm_endpoints", { name, site }, async () => {
+            const proxyPath = process.env.X509_USER_PROXY;
+            const certDir = process.env.X509_CERT_DIR;
+
+            if (!proxyPath || !certDir) {
+                return {
+                    content: [{
+                        type: "text" as const,
+                        text: "Error: X509_USER_PROXY or X509_CERT_DIR environment variables not set",
+                    }],
+                    isError: true,
+                };
+            }
+
+            let proxyPem: Buffer;
+            let caCerts: Buffer[];
+            try {
+                proxyPem = fs.readFileSync(proxyPath);
+                caCerts = fs.readdirSync(certDir)
+                    .filter(f => f.endsWith('.pem') || f.endsWith('.crt'))
+                    .map(f => fs.readFileSync(path.join(certDir, f)));
+            } catch (err) {
+                return {
+                    content: [{
+                        type: "text" as const,
+                        text: `Error reading certificate files: ${err}`,
+                    }],
+                    isError: true,
+                };
+            }
+
+            const agent = new https.Agent({
+                cert: proxyPem,
+                key: proxyPem,
+                ca: caCerts,
+                rejectUnauthorized: true,
+            });
+
+            const params = new URLSearchParams({ json: '' });
+            if (name) params.set('name', name);
+            if (site) params.set('site', site);
+            const url = `https://atlas-cric.cern.ch/api/atlas/ddmendpoint/query/?${params}`;
+
+            const started = process.hrtime.bigint();
+            const data = await new Promise<string>((resolve, reject) => {
+                https.get(
+                    url,
+                    { agent },
+                    (res) => {
+                        let body = '';
+                        res.on('data', (chunk: string) => body += chunk);
+                        res.on('end', () => {
+                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            resolve(body);
+                        });
+                    }
+                ).on('error', reject);
+            });
+
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: data,
+                }],
+            };
+        })
+    );
+
+    server.registerTool(
         "list_panda_queues",
         {
             title: "List PanDA Queues",
