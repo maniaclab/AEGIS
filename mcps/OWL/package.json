@@ -40,8 +40,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
-    "@modelcontextprotocol/inspector": "^0.21.2",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -55,6 +54,7 @@
     "node": ">=26"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.21.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",

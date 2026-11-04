@@ -31,12 +31,10 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/inspector": "^0.21.2",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "fix": "^0.0.6",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.0.1",
     "ssh2": "^1.17.0"
@@ -45,6 +43,7 @@
     "node": ">=26"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.21.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",

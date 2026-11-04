@@ -9,7 +9,7 @@ RUN apk --no-cache add nodejs npm
 
 WORKDIR /app
 COPY . ./
-RUN npm install && npm run build
+RUN npm install && npm run build && npm prune --omit=dev
 RUN apk --no-cache upgrade && \
     apk --no-cache add cmake ca-certificates curl
 

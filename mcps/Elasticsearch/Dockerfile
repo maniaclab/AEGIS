@@ -6,6 +6,6 @@ RUN apk --no-cache add nodejs npm
 
 WORKDIR /app
 COPY . ./
-RUN npm install && npm run build
+RUN npm install && npm run build && npm prune --omit=dev
 
 ENTRYPOINT ["npm", "start"]

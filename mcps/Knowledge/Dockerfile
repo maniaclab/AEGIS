@@ -29,6 +29,6 @@ ENV ADC_DIR=/app/AnalysisFacilities
 # Merged on top of the local knowledge base, so upstream af-docs wins on clashes.
 COPY --from=af-docs /af-docs/ ${ADC_DIR}/
 
-RUN npm install && npm run build
+RUN npm install && npm run build && npm prune --omit=dev
 
 ENTRYPOINT ["npm", "start"]

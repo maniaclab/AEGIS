@@ -4,7 +4,7 @@ RUN apk --no-cache add nodejs npm ca-certificates
 
 WORKDIR /app
 COPY . ./
-RUN npm install && npm run build && apk --no-cache upgrade
+RUN npm install && npm run build && npm prune --omit=dev && apk --no-cache upgrade
 
 COPY scripts/ /opt/ggus-mcp/
 RUN chmod +x /opt/ggus-mcp/*.sh
