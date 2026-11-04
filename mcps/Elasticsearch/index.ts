@@ -301,7 +301,7 @@ export async function createElasticsearchMcpServer(
                     .min(1, "Index name is required")
                     .describe("Name of the Elasticsearch index to search"),
                 queryBody: z
-                    .record(z.any())
+                    .record(z.string(), z.any())
                     .describe(
                         "DSL query that can include query, size, from, etc"
                     )
