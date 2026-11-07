@@ -22,7 +22,14 @@ everything, which can be large.
 | `list_queue_statuses` | Current PanDA queue statuses | `pandaqueue`, `state` (`ACTIVE`, `INACTIVE`, `DISABLED`, `DELETED`, `ANY`), `status` (`TEST`, `ONLINE`, `OFFLINE`) |
 | `list_panda_queue_tags` | Tags attached to PanDA queues | `panda_queue` |
 | `list_ddm_endpoints` | DDM endpoints (storage) and their configuration | `name` (e.g. `AGLT2_DATADISK`), `site` (e.g. `AGLT2`) |
-| `list_ddm_endpoint_statuses` | DDM endpoint (storage) statuses | `ddmendpoint` (e.g. `AGLT2_DATADISK`) |
+| `list_ddm_endpoint_statuses` | DDM endpoint (storage) statuses | `ddmendpoint` (e.g. `AGLT2_DATADISK`), `state` (`ACTIVE`, `INACTIVE`, `DISABLED`, `DELETED`, `ANY`) |
+| `fetch_x509_url` | GET any URL with the service's grid proxy, e.g. a DDM endpoint's `info_url` / `space_usage_url` (storage usage report) or an FTS server from `servedrestfts` | `url` (required), `max_bytes` (default 1 MB, max 5 MB) |
+
+`fetch_x509_url` accepts `https://`, `davs://` (fetched as https) and `http://` (no
+certificate sent). It trusts both public and IGTF CAs, follows up to five redirects, times out
+after 30 s, and refuses private, loopback, link-local and other reserved addresses so it can't be
+used to reach services inside the cluster. Non-2xx responses come back as errors with the
+body included.
 
 ## Connect
 
