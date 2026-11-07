@@ -29,11 +29,13 @@ const product = {
 
 // Sent to clients at initialize: how to use these tools together.
 const instructions = [
-    "Read-only access to ATLAS site and queue configuration in CRIC.",
-    "Tools: list_rc_sites (sites), list_panda_queues and list_queue_statuses (PanDA queues and their state), list_panda_queue_tags, list_ddm_endpoints and list_ddm_endpoint_statuses (storage endpoints).",
+    "Read-only access to ATLAS site and queue configuration in CRIC, plus authenticated fetches of the URLs it lists.",
+    "Tools: list_rc_sites (sites), list_panda_queues and list_queue_statuses (PanDA queues and their state), list_panda_queue_tags, list_ddm_endpoints and list_ddm_endpoint_statuses (storage endpoints), fetch_x509_url (GET a URL with the service's grid x509 proxy).",
     "All filters are optional, but pass one where you can: unfiltered lists are large.",
     "Names are CRIC names: an RC site (e.g. MWT2) owns PanDA queues and DDM endpoints, which have their own names (e.g. MWT2_UCORE, MWT2_DATADISK).",
-    "fetch_x509_url GETs a URL found in CRIC data with the service's grid proxy, e.g. a DDM endpoint's info_url / space_usage_url (storage usage report) or an FTS server from servedrestfts.",
+    "For storage space usage, get the endpoint with list_ddm_endpoints and pass its info_url (or space_usage_url) to fetch_x509_url; the result is a JSON storage resource report (SRR) with total and used sizes in bytes.",
+    "For FTS, take the server from the endpoint's servedrestfts (e.g. https://fts3-atlas.cern.ch:8446) and fetch_x509_url its REST paths, e.g. /whoami or /config/....",
+    "fetch_x509_url returns at most max_bytes (default 1 MB) and refuses private or cluster-internal addresses.",
 ].join(" ");
 
 // ---- fetch_x509_url helpers ----
