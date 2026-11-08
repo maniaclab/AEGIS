@@ -12,7 +12,7 @@ data:
   # Keycloak sub, preferred_username or email; comma-separated. Anyone not listed can
   # read, and anything they submit lands in quarantine until a trusted writer or a
   # second independent source confirms it. Shared API keys are read-only regardless.
-  OWL_TRUSTED_WRITERS: "ivukotic"
+  OWL_TRUSTED_WRITERS: "ivukotic,17e4fb13-518f-404b-a70e-d3bc050f861d"
 
   # ── models ─────────────────────────────────────────────────────────────────
   # Cheap, high-volume path — extraction, novelty, pairwise triage — on the local vLLM
