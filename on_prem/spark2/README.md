@@ -1,6 +1,27 @@
 # Sparks setup
 
-## adding packages and plugings
+## Host configuration (Ansible)
+
+spark-2 is managed by Ansible from the private repo
+[maniaclab/spark-ansible](https://github.com/maniaclab/spark-ansible). It covers vLLM
+(`/srv/vllm`), Tailscale Serve forwards, the pinned OpenClaw version and gateway drop-in,
+Node/uv, hardening, and the daily Hindsight backup timer. That repo's README lists what it
+deliberately does **not** manage (`openclaw.json`, the gateway unit, the secret store) and
+has the rebuild-from-scratch runbook.
+
+The control node is WSL on Ilija's laptop, with the checkout at `~/spark-ansible` (keep it
+in the WSL home, not under `/mnt/c`) and the vault password in `~/.vault_pass_spark-ansible`:
+
+```bash
+cd ~/spark-ansible
+ansible-playbook playbooks/site.yml --check --diff -K   # always first
+ansible-playbook playbooks/site.yml --diff -K           # apply
+```
+
+The `docker-compose.yaml` in this directory is the original shared spark1/spark2 file.
+spark-2 now gets its compose file from the `vllm` role, so change vLLM settings there.
+
+## Adding packages and plugins
 
 ### for traces diagnostics do
 
@@ -58,7 +79,7 @@ It just runs regular openclaw local backup (a backup archive for config, credent
 
 ## Remote access
 
-to install tailgate run:
+To install Tailscale, run:
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
