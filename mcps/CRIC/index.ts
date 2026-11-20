@@ -30,7 +30,7 @@ const product = {
 // Sent to clients at initialize: how to use these tools together.
 const instructions = [
     "Read-only access to ATLAS site and queue configuration in CRIC, plus authenticated fetches of the URLs it lists.",
-    "Tools: list_rc_sites (sites), list_panda_queues and list_queue_statuses (PanDA queues and their state), list_panda_queue_tags, list_ddm_endpoints and list_ddm_endpoint_statuses (storage endpoints), fetch_x509_url (GET a URL with the service's grid x509 proxy).",
+    "Tools: list_rc_sites (ATLAS sites, from atlas-cric), list_wlcg_sites (all WLCG sites, from wlcg-cric),list_panda_queues and list_queue_statuses (PanDA queues and their state), list_panda_queue_tags, list_ddm_endpoints and list_ddm_endpoint_statuses (storage endpoints), fetch_x509_url (GET a URL with the service's grid x509 proxy).",
     "All filters are optional, but pass one where you can: unfiltered lists are large.",
     "Names are CRIC names: an RC site (e.g. MWT2) owns PanDA queues and DDM endpoints, which have their own names (e.g. MWT2_UCORE, MWT2_DATADISK).",
     "For storage space usage, get the endpoint with list_ddm_endpoints and pass its info_url (or space_usage_url) to fetch_x509_url; the result is a JSON storage resource report (SRR) with total and used sizes in bytes.",
@@ -181,36 +181,26 @@ export async function createCricMcpServer(): Promise<McpServer> {
 
     const server = new McpServer(product, { instructions });
 
-    server.registerTool(
-        "list_rc_sites",
-        {
-            title: "List RC Sites",
-            description: "List ATLAS RC sites from CRIC, optionally filtered by name, status, or state.",
-            annotations: {
-                readOnlyHint: true,
-                destructiveHint: false,
-                idempotentHint: true,
-                openWorldHint: true,
-            },
-            inputSchema: {
-                name: z
-                    .string()
-                    .trim()
-                    .optional()
-                    .describe("Filter by RC site name (e.g. 'AGLT2')."),
-                status: z
-                    .string()
-                    .trim()
-                    .optional()
-                    .describe("Filter by site status (e.g. 'online', 'offline')."),
-                state: z
-                    .string()
-                    .trim()
-                    .optional()
-                    .describe("Filter by site state (e.g. 'ACTIVE')."),
-            }
-        },
-        async ({ name, status, state }) => withToolLog("list_rc_sites", { name, status, state }, async () => {
+    const rcSitesInputSchema = {
+        name: z
+            .string()
+            .trim()
+            .optional()
+            .describe("Filter by RC site name (e.g. 'AGLT2')."),
+        status: z
+            .string()
+            .trim()
+            .optional()
+            .describe("Filter by site status (e.g. 'online', 'offline')."),
+        state: z
+            .string()
+            .trim()
+            .optional()
+            .describe("Filter by site state (e.g. 'ACTIVE')."),
+    };
+
+    const rcSitesHandler = (toolName: string, host: string, logLabel: string) =>
+        async ({ name, status, state }: { name?: string; status?: string; state?: string }) => withToolLog(toolName, { name, status, state }, async () => {
             const proxyPath = process.env.X509_USER_PROXY;
             const certDir = process.env.X509_CERT_DIR;
 
@@ -252,7 +242,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
             if (name) params.set('name', name);
             if (status) params.set('status', status);
             if (state) params.set('state', state);
-            const url = `https://atlas-cric.cern.ch/api/core/rcsite/query/?${params}`;
+            const url = `https://${host}/api/core/rcsite/query/?${params}`;
 
             const started = process.hrtime.bigint();
             const data = await new Promise<string>((resolve, reject) => {
@@ -263,7 +253,7 @@ export async function createCricMcpServer(): Promise<McpServer> {
                         let body = '';
                         res.on('data', (chunk: string) => body += chunk);
                         res.on('end', () => {
-                            logUpstream('cric', 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
+                            logUpstream(logLabel, 'GET', new URL(url).pathname, res.statusCode ?? 0, started);
                             resolve(body);
                         });
                     }
@@ -276,7 +266,35 @@ export async function createCricMcpServer(): Promise<McpServer> {
                     text: data,
                 }],
             };
-        })
+        });
+
+    const readOnlyAnnotations = {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+    };
+
+    server.registerTool(
+        "list_rc_sites",
+        {
+            title: "List RC Sites",
+            description: "List ATLAS RC sites from ATLAS CRIC (atlas-cric.cern.ch), optionally filtered by name, status, or state.",
+            annotations: readOnlyAnnotations,
+            inputSchema: rcSitesInputSchema,
+        },
+        rcSitesHandler("list_rc_sites", "atlas-cric.cern.ch", "cric")
+    );
+
+    server.registerTool(
+        "list_wlcg_sites",
+        {
+            title: "List WLCG Sites",
+            description: "List WLCG RC sites from WLCG CRIC (wlcg-cric.cern.ch), optionally filtered by name, status, or state. Covers all WLCG sites, not only those used by ATLAS.",
+            annotations: readOnlyAnnotations,
+            inputSchema: rcSitesInputSchema,
+        },
+        rcSitesHandler("list_wlcg_sites", "wlcg-cric.cern.ch", "wlcg-cric")
     );
 
     server.registerTool(

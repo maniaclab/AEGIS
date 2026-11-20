@@ -10,5 +10,4 @@
 * replace Qwen 3.6 with Qwen 3.8 on Spark 2 (OWL's cheap model since 2026-10-07: re-run the extraction comparison on the agent memory files after the switch).
 * create an additional OpenClaw single-replica StatefulSet in the Analytics cluster. Move an unused agent (e.g. the DDM bot) to it. Test connections, upgrades, vLLM access, etc.
 
-* get hindsight UI
 * configur HS

@@ -18,6 +18,7 @@ everything, which can be large.
 | Tool | What it does | Filters |
 | --- | --- | --- |
 | `list_rc_sites` | ATLAS resource-centre sites | `name` (e.g. `AGLT2`), `status` (`online`, `offline`), `state` (`ACTIVE`) |
+| `list_wlcg_sites` | All WLCG resource-centre sites, from [WLCG CRIC](https://wlcg-cric.cern.ch) | same as `list_rc_sites` |
 | `list_panda_queues` | PanDA queues and their configuration | `name` (e.g. `AGLT2_TEST`), `state`, `status` |
 | `list_queue_statuses` | Current PanDA queue statuses | `pandaqueue`, `state` (`ACTIVE`, `INACTIVE`, `DISABLED`, `DELETED`, `ANY`), `status` (`TEST`, `ONLINE`, `OFFLINE`) |
 | `list_panda_queue_tags` | Tags attached to PanDA queues | `panda_queue` |
